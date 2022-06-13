@@ -2,22 +2,29 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/araddon/dateparse"
 	"github.com/bwmarrin/discordgo"
 	"github.com/tj/go-naturaldate"
 	"log"
-	"net/url"
-	"regexp"
 	"strconv"
 	"time"
 )
 
 type Event struct {
-	title       string
-	description string
-	limit       int
-	start       time.Time
-	end         time.Time
+	title          string
+	description    string
+	limit          int
+	start          time.Time
+	end            time.Time
+	accepted       int
+	declined       int
+	tentative      int
+	waitlist       int
+	acceptedNames  []string
+	declinedNames  []string
+	tentativeNames []string
+	waitlistNames  []string
 	// TODO: image, frequency, localization
 }
 
@@ -79,14 +86,34 @@ func NewEventBuilder(s *discordgo.Session, c *discordgo.Channel, ic *discordgo.I
 }
 
 func (eb *EventBuilder) StartChat() error {
-	msg, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title:       "Enter the event title",
-		Color:       purple,
-		Description: "Up to 200 characters are permitted",
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "To exit, type 'cancel'",
-		},
-	})
+	messages, err := eb.Session.ChannelMessages(eb.Channel.ID, 1, "", "", "")
+	if err != nil {
+		return fmt.Errorf("failed to check last message from channel")
+	}
+	for _, m := range messages {
+		for _, embed := range m.Embeds {
+			if embed.Title == EnterTitleMessage.Title {
+				if err := eb.Session.InteractionRespond(eb.InteractionCreate.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "You have another command in process",
+								Color:       purple,
+								Description: "Check your direct messages with me",
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				}); err != nil {
+					return fmt.Errorf("respond to command in process: %v", err)
+				}
+				return fmt.Errorf("existing command in process")
+			}
+		}
+	}
+
+	msg, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterTitleMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -120,14 +147,7 @@ func (eb *EventBuilder) AddTitle() error {
 }
 
 func (eb *EventBuilder) AddDescription() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title:       "Enter the event description",
-		Color:       purple,
-		Description: "Type `None` for no description. Up to 1600 characters are permitted",
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "To exit, type 'cancel'",
-		},
-	})
+	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDescriptionMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -141,14 +161,7 @@ func (eb *EventBuilder) AddDescription() error {
 }
 
 func (eb *EventBuilder) SetAttendeeLimit() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title:       "Enter the maximum number of attendees",
-		Color:       purple,
-		Description: "Type `None` for no limit. Up to 250 attendees are permitted",
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "To exit, type 'cancel'",
-		},
-	})
+	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterAttendeeLimitMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -181,16 +194,7 @@ func (eb *EventBuilder) SetAttendeeLimit() error {
 }
 
 func (eb *EventBuilder) SetDate() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title: "When should the event start",
-		Color: purple,
-		// TODO: Support various time input formats
-		// Description: "> Friday at 9pm\n> Tomorrow at 18:00\n> Now\n> In 1 hour\n> YYYY-MM-DD 7:00 PM",
-		Description: "> YYYY-MM-DD 7:00 PM",
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "To exit, type 'cancel'",
-		},
-	})
+	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDateStartMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -210,14 +214,7 @@ func (eb *EventBuilder) SetDate() error {
 }
 
 func (eb *EventBuilder) SetDuration() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title:       "What is the duration of this event?",
-		Color:       purple,
-		Description: "Type `None` for no duration.\n> 2 hours\n> 45 minutes\n> 1 hour and 30 minutes",
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "To exit, type 'cancel'",
-		},
-	})
+	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDurationMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -233,48 +230,15 @@ func (eb *EventBuilder) SetDuration() error {
 	return nil
 }
 
-func (eb *EventBuilder) printTime(start, end time.Time) string {
-	base := fmt.Sprintf("<t:%d:F>", start.Unix())
-	relative := fmt.Sprintf("\n🕔<t:%d:R>", start.Unix())
-	if end.IsZero() {
-		return base + relative
-	}
-
-	if end.Sub(start) < time.Hour*24 {
-		base = base + fmt.Sprintf(" - <t:%d:t>", end.Unix())
-	} else {
-		base = base + fmt.Sprintf(" - <t:%d:F>", end.Unix())
-	}
-	return base + relative
-}
-
-func (eb *EventBuilder) printAddGoogleCalendarLink(title, description string, startTime, endTime time.Time) string {
-	if endTime.IsZero() {
-		endTime = startTime
-	}
-
-	s, e := startTime.UTC().Format(GoogleCalendarTimeFormat), endTime.UTC().Format(GoogleCalendarTimeFormat)
-
-	u, _ := url.Parse("https://www.google.com/calendar/event?action=TEMPLATE&text=&details=&location=")
-	q := u.Query()
-	q.Set("text", title)
-	q.Set("details", description)
-	u.RawQuery = q.Encode()
-
-	// TODO: Encode multiple dates rather than constructing
-	re := regexp.MustCompile("[[:punct:]]")
-	s, e = re.ReplaceAllString(s, ""), re.ReplaceAllString(e, "")
-
-	link := u.String() + "&dates=" + s + "/" + e
-
-	return fmt.Sprintf("[Add to Google Calendar](%s)", link)
-}
-
 func (eb *EventBuilder) CreateEvent() error {
 	if eb.InteractionCreate.Interaction.Member == nil {
 		return fmt.Errorf("cannot find user who created event")
 	}
 
+	acceptedField := "✅ Accepted"
+	if eb.Event.limit > 0 {
+		acceptedField = acceptedField + fmt.Sprintf(" (0/%d)", eb.Event.limit)
+	}
 	msg, err := eb.Session.FollowupMessageCreate(eb.InteractionCreate.Interaction, true, &discordgo.WebhookParams{
 		Embeds: []*discordgo.MessageEmbed{
 			{
@@ -285,14 +249,14 @@ func (eb *EventBuilder) CreateEvent() error {
 					{
 						Name: "Time",
 						// https://discord.com/developers/docs/reference#message-formatting-timestamp-styles
-						Value: eb.printTime(eb.Event.start, eb.Event.end),
+						Value: util.PrintTime(eb.Event.start, eb.Event.end),
 					},
 					{
 						Name:  "Links",
-						Value: eb.printAddGoogleCalendarLink(eb.Event.title, eb.Event.description, eb.Event.start, eb.Event.end),
+						Value: util.PrintAddGoogleCalendarLink(eb.Event.title, eb.Event.description, eb.Event.start, eb.Event.end),
 					},
 					{
-						Name:   "✅ Accepted",
+						Name:   acceptedField,
 						Value:  "-",
 						Inline: true,
 					},
@@ -315,31 +279,11 @@ func (eb *EventBuilder) CreateEvent() error {
 		Components: []discordgo.MessageComponent{
 			discordgo.ActionsRow{
 				Components: []discordgo.MessageComponent{
-					discordgo.Button{
-						Label:    "✅",
-						Style:    discordgo.SecondaryButton,
-						CustomID: "accept",
-					},
-					discordgo.Button{
-						Label:    "❌",
-						Style:    discordgo.SecondaryButton,
-						CustomID: "decline",
-					},
-					discordgo.Button{
-						Label:    "❔",
-						Style:    discordgo.SecondaryButton,
-						CustomID: "tentative",
-					},
-					discordgo.Button{
-						Label:    "Edit",
-						Style:    discordgo.PrimaryButton,
-						CustomID: "edit",
-					},
-					discordgo.Button{
-						Label:    "Delete",
-						Style:    discordgo.DangerButton,
-						CustomID: "delete",
-					},
+					AcceptButton,
+					DeclineButton,
+					TentativeButton,
+					EditButton,
+					DeleteButton,
 				},
 			},
 		},
