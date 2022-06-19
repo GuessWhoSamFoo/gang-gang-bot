@@ -9,8 +9,10 @@ import (
 )
 
 var (
-	linkRegex      = regexp.MustCompile(`^\[[^][]+]\((https?://[^()]+)\)$`)
-	headCountRegex = regexp.MustCompile(`\(([[:digit:]]+)\/?([[:digit:]]+)?\)$`)
+	linkRegex        = regexp.MustCompile(`^\[[^][]+]\((https?://[^()]+)\)$`)
+	headCountRegex   = regexp.MustCompile(`\(([[:digit:]]+)\/?([[:digit:]]+)?\)$`)
+	footerRegex      = regexp.MustCompile(`^Created by (.+)$`)
+	inputSelectRegex = regexp.MustCompile(`^\d+(?: \d+)*$`)
 )
 
 // GetLinkFromDeleteDescription extracts a message link from a delete handler
@@ -19,7 +21,6 @@ func GetLinkFromDeleteDescription(description string) (string, error) {
 	if len(result) != 2 {
 		return "", fmt.Errorf("invalid event description")
 	}
-	fmt.Println(description, result[1])
 	return result[1], nil
 }
 
@@ -63,74 +64,6 @@ func ParseFieldHeadCount(fieldName string) (count int, limit int, err error) {
 	return -1, -1, fmt.Errorf("cannot parse field name for count")
 }
 
-func IncrementFieldCounter(fieldName string) (string, error) {
-	var result string
-	match := headCountRegex.FindStringSubmatch(fieldName)
-	l := len(match)
-
-	if l == 0 {
-		result = fieldName + " (1)"
-		return result, nil
-	}
-
-	if l == 3 {
-		c, err := strconv.Atoi(match[1])
-		if err != nil {
-			return result, err
-		}
-		if match[2] == "" {
-			result = headCountRegex.ReplaceAllString(fieldName, "") + fmt.Sprintf("(%d)", c+1)
-			return result, nil
-		}
-		limit, err := strconv.Atoi(match[2])
-		if err != nil {
-			return result, err
-		}
-		if c >= limit {
-			return result, fmt.Errorf("cannot exceed field limit")
-		}
-		result = headCountRegex.ReplaceAllString(fieldName, "") + fmt.Sprintf("(%d/%d)", c+1, limit)
-		return result, nil
-	}
-	return result, fmt.Errorf("cannot parse field name")
-}
-
-func DecrementFieldCounter(fieldName string) (string, error) {
-	var result string
-	match := headCountRegex.FindStringSubmatch(fieldName)
-	l := len(match)
-
-	if l == 0 {
-		return fieldName, nil
-	}
-
-	if l == 3 {
-		c, err := strconv.Atoi(match[1])
-		if err != nil {
-			return result, err
-		}
-		c--
-		if match[2] == "" {
-			if c == 0 {
-				result = headCountRegex.ReplaceAllString(fieldName, "")
-				return strings.Trim(result, " "), nil
-			}
-			result = headCountRegex.ReplaceAllString(fieldName, "") + fmt.Sprintf("(%d)", c)
-			return result, nil
-		}
-		limit, err := strconv.Atoi(match[2])
-		if err != nil {
-			return result, err
-		}
-		if c < 0 {
-			return result, fmt.Errorf("cannot be negative")
-		}
-		result = headCountRegex.ReplaceAllString(fieldName, "") + fmt.Sprintf("(%d/%d)", c, limit)
-		return result, nil
-	}
-	return result, fmt.Errorf("cannot parse field name")
-}
-
 func AddUserToField(fieldValue, userName string) (string, error) {
 	if fieldValue == "-" {
 		return fmt.Sprintf("> %s", userName), nil
@@ -145,31 +78,21 @@ func AddUserToField(fieldValue, userName string) (string, error) {
 	return strings.Join(names, "\n"), nil
 }
 
-func RemoveUserFromField(fieldValue, userName string) (string, error) {
-	if fieldValue == "-" {
-		return fieldValue, nil
-	}
-	names := strings.Split(fieldValue, "\n")
+func RemoveUser(names []string, userName string) []string {
 	var i int
 	for _, n := range names {
-		if strings.Trim(n, "> ") != userName {
+		if n != userName {
 			names[i] = n
 			i++
 		}
 	}
 	names = names[:i]
-	if len(names) == 0 {
-		return "-", nil
-	}
-	return strings.Join(names, "\n"), nil
+	return names
 }
 
-func ContainsUserInField(fieldValue, userName string) bool {
-	if fieldValue == "-" {
-		return false
-	}
-	for _, n := range strings.Split(fieldValue, "\n") {
-		if strings.Trim(n, "> ") == userName {
+func ContainsUser(names []string, userName string) bool {
+	for _, n := range names {
+		if n == userName {
 			return true
 		}
 	}
@@ -177,12 +100,47 @@ func ContainsUserInField(fieldValue, userName string) bool {
 }
 
 func GetUsersFromValues(fieldValue string) []string {
-	result := []string{}
+	result := make([]string, 0)
 	if fieldValue == "-" {
 		return result
 	}
 	for _, n := range strings.Split(fieldValue, "\n") {
 		result = append(result, strings.Trim(n, "> "))
+	}
+	return result
+}
+
+func NameListToValues(list []string) string {
+	if len(list) == 0 {
+		return "-"
+	}
+	result := make([]string, 0)
+	for _, n := range list {
+		result = append(result, fmt.Sprintf("> %s", n))
+	}
+	return strings.Join(result, "\n")
+}
+
+func GetUserFromFooter(footText string) string {
+	match := footerRegex.FindStringSubmatch(footText)
+	if len(match) != 2 {
+		return ""
+	}
+	return match[1]
+}
+
+func IsInputOption(input string) bool {
+	result := inputSelectRegex.FindStringSubmatch(input)
+	if len(result) != 1 {
+		return false
+	}
+	return true
+}
+
+func MergeSlices(slices ...[]string) []string {
+	result := make([]string, 0)
+	for _, s := range slices {
+		result = append(result, s...)
 	}
 	return result
 }

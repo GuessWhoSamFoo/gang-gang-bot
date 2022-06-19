@@ -1,7 +1,7 @@
 package util
 
 import (
-	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -18,6 +18,11 @@ func TestGetLinkFromDeleteDescription(t *testing.T) {
 			expected: "https://discord.com/channels/530946869023604746/530949686962421770/755612707146825839",
 		},
 		{
+			name:     "calendar link",
+			input:    "[Add to Google Calendar](https://www.google.com/calendar/event?action=TEMPLATE&text=12321&details=&location=&dates=20220618T040000Z/20220618T050000Z)",
+			expected: "https://www.google.com/calendar/event?action=TEMPLATE&text=12321&details=&location=&dates=20220618T040000Z/20220618T050000Z",
+		},
+		{
 			name:  "invalid link",
 			input: "https://google.com",
 			isErr: true,
@@ -30,9 +35,7 @@ func TestGetLinkFromDeleteDescription(t *testing.T) {
 			if err == nil && tc.isErr {
 				t.Fatalf("expected err: %v", tc.name)
 			}
-			if got != tc.expected {
-				t.Fatalf("expected: %v, got: %v", tc.expected, got)
-			}
+			assert.Equal(t, tc.expected, got)
 		})
 	}
 }
@@ -66,91 +69,9 @@ func TestParseFieldHeadCount(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			gotCount, gotLimit, err := ParseFieldHeadCount(tc.input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if gotCount != tc.expectedCount && gotLimit != tc.expectedLimit {
-				t.Fatalf("expected count %d, limit %d: got %d, %d", tc.expectedCount, tc.expectedLimit, gotCount, gotLimit)
-			}
-		})
-	}
-}
-
-func TestIncrementFieldCounter(t *testing.T) {
-	cases := []struct {
-		name     string
-		input    string
-		expected string
-		isErr    bool
-	}{
-		{
-			name:     "no limit with count",
-			input:    "✅ Accepted (100)",
-			expected: "✅ Accepted (101)",
-		},
-		{
-			name:     "limit",
-			input:    "✅ Accepted (0/3)",
-			expected: "✅ Accepted (1/3)",
-		},
-		{
-			name:     "no limit without count",
-			input:    "✅ Accepted",
-			expected: "✅ Accepted (1)",
-		},
-		{
-			name:  "limit exceeded",
-			input: "✅ Accepted (3/3)",
-			isErr: true,
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := IncrementFieldCounter(tc.input)
-			if tc.isErr && err == nil {
-				fmt.Println(got)
-				t.Fatalf("expected err: %v", err)
-			}
-			if got != tc.expected {
-				t.Fatalf("expected: %s, got: %s", tc.expected, got)
-			}
-		})
-	}
-}
-
-func TestDecrementFieldCounter(t *testing.T) {
-	cases := []struct {
-		name     string
-		input    string
-		expected string
-		isErr    bool
-	}{
-		{
-			name:     "no limit with count",
-			input:    "✅ Accepted (98)",
-			expected: "✅ Accepted (97)",
-		},
-		{
-			name:     "limit",
-			input:    "✅ Accepted (1/3)",
-			expected: "✅ Accepted (0/3)",
-		},
-		{
-			name:     "no limit without count",
-			input:    "✅ Accepted (1)",
-			expected: "✅ Accepted",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := DecrementFieldCounter(tc.input)
-			if tc.isErr && err == nil {
-				fmt.Println(got)
-				t.Fatalf("expected err: %v", err)
-			}
-			if got != tc.expected {
-				t.Fatalf("expected: %s, got: %s", tc.expected, got)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedCount, gotCount)
+			assert.Equal(t, tc.expectedLimit, gotLimit)
 		})
 	}
 }
@@ -179,52 +100,120 @@ func TestAddUserToField(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := AddUserToField(tc.value, tc.userName)
-			if err != nil {
-				t.Fatalf("unexpected err: %v", err)
-			}
-			if got != tc.expected {
-				t.Fatalf("expected: %s, got: %s", tc.expected, got)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, got)
 		})
 	}
 }
 
-func TestRemoveUserFromField(t *testing.T) {
+func TestRemoveUser(t *testing.T) {
 	cases := []struct {
 		name     string
-		value    string
+		names    []string
 		userName string
-		expected string
+		expected []string
 	}{
 		{
 			name:     "empty",
-			value:    "-",
+			names:    []string{},
 			userName: "foo",
-			expected: "-",
+			expected: []string{},
 		},
 		{
-			name:     "remove user",
-			value:    "> foo",
-			userName: "foo",
-			expected: "-",
+			name:     "should remove",
+			names:    []string{"hello", "world"},
+			userName: "world",
+			expected: []string{"hello"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := RemoveUser(tc.names, tc.userName)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestGetUsersFromValues(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "empty",
+			input:    "-",
+			expected: []string{},
 		},
 		{
-			name:     "remove user with remaining list",
-			value:    "> foo\n> bar\n> baz",
-			userName: "bar",
-			expected: "> foo\n> baz",
+			name:     "one",
+			input:    "> foo",
+			expected: []string{"foo"},
+		},
+		{
+			name:     "many",
+			input:    "> foo\n> bar\n> baz",
+			expected: []string{"foo", "bar", "baz"},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := RemoveUserFromField(tc.value, tc.userName)
-			if err != nil {
-				t.Fatalf("unexpected err: %v", err)
-			}
-			if got != tc.expected {
-				t.Fatalf("expected: %s, got: %s", tc.expected, got)
-			}
+			assert.Equal(t, tc.expected, GetUsersFromValues(tc.input))
+		})
+	}
+}
+
+func TestNameListToValues(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    []string
+		expected string
+	}{
+		{
+			name:     "empty",
+			input:    []string{},
+			expected: "-",
+		},
+		{
+			name:     "one name",
+			input:    []string{"foo"},
+			expected: "> foo",
+		},
+		{
+			name:     "many",
+			input:    []string{"foo", "bar", "baz"},
+			expected: "> foo\n> bar\n> baz",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, NameListToValues(tc.input))
+		})
+	}
+}
+
+func TestIsInputOption(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "is valid",
+			input:    "1 3 5",
+			expected: true,
+		},
+		{
+			name:     "invalid",
+			input:    "testing",
+			expected: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, IsInputOption(tc.input))
 		})
 	}
 }

@@ -3,339 +3,338 @@ package pkg
 import (
 	"fmt"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
-	"github.com/araddon/dateparse"
 	"github.com/bwmarrin/discordgo"
 	"github.com/tj/go-naturaldate"
+	"golang.org/x/exp/slices"
 	"log"
-	"strconv"
+	"strings"
 	"time"
 )
 
+var (
+	acceptedBase  = "✅ Accepted"
+	declinedBase  = "❌ Declined"
+	tentativeBase = "❔ Tentative"
+)
+
+// Event is an internal representation of a formatted Discord Embed Message
 type Event struct {
-	title          string
-	description    string
-	limit          int
-	start          time.Time
-	end            time.Time
-	accepted       int
-	declined       int
-	tentative      int
-	waitlist       int
-	acceptedNames  []string
-	declinedNames  []string
-	tentativeNames []string
-	waitlistNames  []string
+	Title       string
+	Description string
+	Limit       int
+	Start       time.Time
+	End         time.Time
+	Accepted    int
+	Declined    int
+	Tentative   int
+	Waitlist    int
+	// TODO: Generalize to N signup options
+	AcceptedNames  []string
+	DeclinedNames  []string
+	TentativeNames []string
+	WaitlistNames  []string
+	Owner          string
+	Color          int
 	// TODO: image, frequency, localization
 }
 
 // NewEvent creates a new event
 func NewEvent() *Event {
 	return &Event{
-		limit: -1,
-		start: time.Now(),
+		Limit:          -1,
+		Start:          time.Now(),
+		AcceptedNames:  []string{},
+		DeclinedNames:  []string{},
+		TentativeNames: []string{},
+		WaitlistNames:  []string{},
 	}
 }
 
 func (e *Event) AddTitle(title string) {
-	e.title = title
+	e.Title = title
 }
 
 func (e *Event) AddDescription(description string) {
-	e.description = description
+	e.Description = description
 }
 
 func (e *Event) SetMaximumAttendees(number int) {
-	e.limit = number
+	e.Limit = number
 }
 
 func (e *Event) SetStartTime(startTime time.Time) {
-	e.start = startTime
+	e.Start = startTime
 }
 
 func (e *Event) SetDuration(length string) error {
 	if length == "" {
 		return nil
 	}
-	end, err := naturaldate.Parse(length, e.start, naturaldate.WithDirection(naturaldate.Future))
+	end, err := naturaldate.Parse(length, e.Start, naturaldate.WithDirection(naturaldate.Future))
 	if err != nil {
 		return err
 	}
-	e.end = end
+	e.End = end
 	return nil
 }
 
-type EventBuilder struct {
-	Event             *Event
-	Session           *discordgo.Session
-	Channel           *discordgo.Channel
-	GuildID           string
-	InteractionCreate *discordgo.InteractionCreate
-}
-
-// NewEventBuilder manages the lifecycle of an event creation
-func NewEventBuilder(s *discordgo.Session, c *discordgo.Channel, ic *discordgo.InteractionCreate) (*EventBuilder, error) {
-	if s == nil || c == nil || ic == nil {
-		return nil, fmt.Errorf("missing builder resource %v, %v, %v", s, c, ic)
+func (e *Event) ToggleAccept(s *discordgo.Session, i *discordgo.InteractionCreate, name string) error {
+	if slices.Contains(e.DeclinedNames, name) {
+		e.Declined--
+		e.DeclinedNames = util.RemoveUser(e.DeclinedNames, name)
 	}
-	return &EventBuilder{
-		Event:             NewEvent(),
-		Session:           s,
-		Channel:           c,
-		InteractionCreate: ic,
-	}, nil
-}
-
-func (eb *EventBuilder) StartChat() error {
-	messages, err := eb.Session.ChannelMessages(eb.Channel.ID, 1, "", "", "")
-	if err != nil {
-		return fmt.Errorf("failed to check last message from channel")
+	if slices.Contains(e.TentativeNames, name) {
+		e.Tentative--
+		e.TentativeNames = util.RemoveUser(e.TentativeNames, name)
 	}
-	for _, m := range messages {
-		for _, embed := range m.Embeds {
-			if embed.Title == EnterTitleMessage.Title {
-				if err := eb.Session.InteractionRespond(eb.InteractionCreate.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Embeds: []*discordgo.MessageEmbed{
-							{
-								Title:       "You have another command in process",
-								Color:       purple,
-								Description: "Check your direct messages with me",
-							},
-						},
-						Flags: discordgo.MessageFlagsEphemeral,
-					},
-				}); err != nil {
-					return fmt.Errorf("respond to command in process: %v", err)
-				}
-				return fmt.Errorf("existing command in process")
-			}
+	if slices.Contains(e.WaitlistNames, name) {
+		e.Waitlist--
+		e.WaitlistNames = util.RemoveUser(e.WaitlistNames, name)
+	}
+
+	if e.Limit > 0 && e.Accepted >= e.Limit {
+		e.Waitlist++
+		e.WaitlistNames = append(e.WaitlistNames, name)
+	} else if !slices.Contains(e.AcceptedNames, name) {
+		e.Accepted++
+		e.AcceptedNames = append(e.AcceptedNames, name)
+	} else {
+		fmt.Println(e.AcceptedNames)
+		e.Accepted--
+		e.AcceptedNames = util.RemoveUser(e.AcceptedNames, name)
+		if err := e.BumpWaitlist(s, i.Interaction); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
-	msg, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterTitleMessage)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
+func (e *Event) ToggleDecline(s *discordgo.Session, i *discordgo.InteractionCreate, name string) error {
+	if slices.Contains(e.AcceptedNames, name) {
+		e.Accepted--
+		e.AcceptedNames = util.RemoveUser(e.AcceptedNames, name)
+		if err := e.BumpWaitlist(s, i.Interaction); err != nil {
+			return err
+		}
+	}
+	if slices.Contains(e.TentativeNames, name) {
+		e.Tentative--
+		e.TentativeNames = util.RemoveUser(e.TentativeNames, name)
+	}
+	if slices.Contains(e.WaitlistNames, name) {
+		e.Waitlist--
+		e.WaitlistNames = util.RemoveUser(e.WaitlistNames, name)
 	}
 
-	if err := eb.Session.InteractionRespond(eb.InteractionCreate.Interaction, &discordgo.InteractionResponse{
+	if !slices.Contains(e.DeclinedNames, name) {
+		e.Declined++
+		e.DeclinedNames = append(e.DeclinedNames, name)
+	} else {
+		e.Declined--
+		e.DeclinedNames = util.RemoveUser(e.DeclinedNames, name)
+	}
+	return nil
+}
+
+func (e *Event) ToggleTentative(s *discordgo.Session, i *discordgo.InteractionCreate, name string) error {
+	if slices.Contains(e.AcceptedNames, name) {
+		e.Accepted--
+		e.AcceptedNames = util.RemoveUser(e.AcceptedNames, name)
+		if err := e.BumpWaitlist(s, i.Interaction); err != nil {
+			return err
+		}
+	}
+	if slices.Contains(e.DeclinedNames, name) {
+		e.Declined--
+		e.DeclinedNames = util.RemoveUser(e.DeclinedNames, name)
+	}
+	if slices.Contains(e.WaitlistNames, name) {
+		e.Waitlist--
+		e.WaitlistNames = util.RemoveUser(e.WaitlistNames, name)
+	}
+
+	if !slices.Contains(e.TentativeNames, name) {
+		e.Tentative++
+		e.TentativeNames = append(e.TentativeNames, name)
+	} else {
+		e.Tentative--
+		e.TentativeNames = util.RemoveUser(e.TentativeNames, name)
+	}
+	return nil
+}
+
+func (e *Event) RemoveFromAllLists(s *discordgo.Session, i *discordgo.InteractionCreate, name string) error {
+	if util.ContainsUser(e.WaitlistNames, name) {
+		e.WaitlistNames = util.RemoveUser(e.WaitlistNames, name)
+		e.Waitlist--
+	}
+	if util.ContainsUser(e.AcceptedNames, name) {
+		e.AcceptedNames = util.RemoveUser(e.AcceptedNames, name)
+		e.Accepted--
+		if err := e.BumpWaitlist(s, i.Interaction); err != nil {
+			return err
+		}
+	}
+	if util.ContainsUser(e.DeclinedNames, name) {
+		e.DeclinedNames = util.RemoveUser(e.DeclinedNames, name)
+		e.Declined--
+	}
+	if util.ContainsUser(e.TentativeNames, name) {
+		e.TentativeNames = util.RemoveUser(e.TentativeNames, name)
+		e.Tentative--
+	}
+	return nil
+}
+
+func (e *Event) BumpWaitlist(s *discordgo.Session, i *discordgo.Interaction) error {
+	if (e.Limit != -1 && e.Accepted >= e.Limit) || e.Waitlist <= 0 {
+		return nil
+	}
+	e.Waitlist--
+	name := e.WaitlistNames[0]
+	e.WaitlistNames = e.WaitlistNames[1:]
+	e.Accepted++
+	e.AcceptedNames = append(e.AcceptedNames, name)
+
+	c, err := s.UserChannelCreate(i.Member.User.ID)
+	if err != nil {
+		return err
+	}
+	// TODO: Handle guilds with more than 1000 members
+	members, err := s.GuildMembersSearch(i.GuildID, name, 1000)
+	if err != nil {
+		return err
+	}
+	for _, m := range members {
+		if m.User.Username == name {
+			if _, err := s.ChannelMessageSendEmbed(c.ID, &discordgo.MessageEmbed{
+				Title:       "You have been moved off the waitlist!",
+				Color:       Purple,
+				Description: fmt.Sprintf("[Click here to view the event](https://discord.com/channels/%s/%s/%s)", i.GuildID, i.ChannelID, i.Message.ID),
+			}); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
+}
+
+func NotifyCommandInProgress(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Embeds: []*discordgo.MessageEmbed{
-				{
-					Title:       "Let's create an event",
-					Color:       purple,
-					Description: fmt.Sprintf("I've sent you a [direct message](https://discordapp.com/channels/%s/%s) with next steps.", eb.InteractionCreate.GuildID, msg.ChannelID),
-				},
+				&CommandInProcessMessage,
 			},
 			Flags: discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
-		return fmt.Errorf("command handler response: %v", err)
+		log.Printf("failed to send message: %v", err)
 	}
-	eb.GuildID = eb.InteractionCreate.Interaction.GuildID
-	return nil
 }
 
-func (eb *EventBuilder) AddTitle() error {
-	result, err := eb.waitForInput(time.Second * 60)
-	if err != nil {
-		return err
+func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
+	if len(msg.Embeds) != 1 {
+		return nil, fmt.Errorf("expected 1 embed: got %d", len(msg.Embeds))
 	}
-	eb.Event.AddTitle(result.(string))
-	return nil
-}
-
-func (eb *EventBuilder) AddDescription() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDescriptionMessage)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	result, err := eb.waitForInput(time.Second * 60)
-	if err != nil {
-		return err
-	}
-	eb.Event.AddDescription(result.(string))
-	return nil
-}
-
-func (eb *EventBuilder) SetAttendeeLimit() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterAttendeeLimitMessage)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	for i := 0; i < 3; i++ {
-		result, err := eb.waitForInput(time.Second * 60)
-		if err != nil {
-			return err
-		}
-
-		s, ok := result.(string)
-		if ok && s == "" {
-			return nil
-		}
-
-		val, err := strconv.Atoi(s)
-		if err != nil {
-			return err
-		}
-
-		if val > 1 && val < 250 {
-			eb.Event.SetMaximumAttendees(val)
-			return nil
-		}
-		if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, "Entry must be between 1 and 250 (or `None` for no limit). Try again:"); err != nil {
-			return err
-		}
-	}
-	return fmt.Errorf("unable to set attendee limit")
-}
-
-func (eb *EventBuilder) SetDate() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDateStartMessage)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	result, err := eb.waitForInput(time.Second * 60)
-	if err != nil {
-		return err
-	}
-
-	startTime, err := dateparse.ParseLocal(result.(string))
-	if err != nil {
-		return fmt.Errorf("cannot parse time: %v", err)
-	}
-
-	eb.Event.SetStartTime(startTime)
-	return nil
-}
-
-func (eb *EventBuilder) SetDuration() error {
-	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterDurationMessage)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	result, err := eb.waitForInput(time.Second * 60)
-	if err != nil {
-		return fmt.Errorf("cannot parse duration: %v", err)
-	}
-
-	if err := eb.Event.SetDuration(result.(string)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (eb *EventBuilder) CreateEvent() error {
-	if eb.InteractionCreate.Interaction.Member == nil {
-		return fmt.Errorf("cannot find user who created event")
-	}
-
-	acceptedField := "✅ Accepted"
-	if eb.Event.limit > 0 {
-		acceptedField = acceptedField + fmt.Sprintf(" (0/%d)", eb.Event.limit)
-	}
-	msg, err := eb.Session.FollowupMessageCreate(eb.InteractionCreate.Interaction, true, &discordgo.WebhookParams{
-		Embeds: []*discordgo.MessageEmbed{
-			{
-				Title:       eb.Event.title,
-				Description: eb.Event.description,
-				Color:       purple,
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name: "Time",
-						// https://discord.com/developers/docs/reference#message-formatting-timestamp-styles
-						Value: util.PrintTime(eb.Event.start, eb.Event.end),
-					},
-					{
-						Name:  "Links",
-						Value: util.PrintAddGoogleCalendarLink(eb.Event.title, eb.Event.description, eb.Event.start, eb.Event.end),
-					},
-					{
-						Name:   acceptedField,
-						Value:  "-",
-						Inline: true,
-					},
-					{
-						Name:   "❌ Declined",
-						Value:  "-",
-						Inline: true,
-					},
-					{
-						Name:   "❔ Tentative",
-						Value:  "-",
-						Inline: true,
-					},
-				},
-				Footer: &discordgo.MessageEmbedFooter{
-					Text: fmt.Sprintf("Created by %v", eb.InteractionCreate.Interaction.Member.User.Username),
-				},
-			},
-		},
-		Components: []discordgo.MessageComponent{
-			discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					AcceptButton,
-					DeclineButton,
-					TentativeButton,
-					EditButton,
-					DeleteButton,
-				},
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	_, err = eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-		Title:       "Event has been created",
-		Color:       purple,
-		Description: fmt.Sprintf("[Click here to view the event](https://discord.com/channels/%s/%s/%s)", eb.InteractionCreate.GuildID, eb.InteractionCreate.Interaction.ChannelID, msg.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-	log.Println("Successfully created event")
-	return nil
-}
-
-func (eb *EventBuilder) waitForInput(timeout time.Duration) (interface{}, error) {
-	input := make(chan string)
-	cancelFunc := eb.Session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		// Only interested in inputs via DM
-		if m.ChannelID == eb.Channel.ID {
-			input <- m.Content
-		}
-	})
-	defer cancelFunc()
-
-	for {
-		select {
-		case result := <-input:
-			if result == "" {
-				continue
-			}
-			if result == "cancel" {
-				if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, "Event creation has been canceled"); err != nil {
-					return nil, err
-				}
-				return nil, fmt.Errorf("canceled event creation")
-			}
-			if result == "None" {
-				result = ""
-			}
-			return result, nil
-		case <-time.After(timeout):
-			input <- ""
-			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, "I'm not sure where you went. We can try this again later."); err != nil {
+	e := &Event{}
+	embed := msg.Embeds[0]
+	e.Title = embed.Title
+	e.Description = embed.Description
+	e.Color = embed.Color
+	for _, f := range embed.Fields {
+		switch {
+		case strings.Contains(f.Name, acceptedBase):
+			_, limit, err := util.ParseFieldHeadCount(f.Name)
+			if err != nil {
 				return nil, err
 			}
-			return nil, fmt.Errorf("create event timed out")
+			e.Limit = limit
+			e.AcceptedNames = util.GetUsersFromValues(f.Value)
+			e.Accepted = len(e.AcceptedNames)
+		case strings.Contains(f.Name, declinedBase):
+			e.DeclinedNames = util.GetUsersFromValues(f.Value)
+			e.Declined = len(e.DeclinedNames)
+		case strings.Contains(f.Name, tentativeBase):
+			e.TentativeNames = util.GetUsersFromValues(f.Value)
+			e.Tentative = len(e.TentativeNames)
+		case f.Name == "Links":
+			var err error
+			e.Start, e.End, err = util.GetTimesFromLink(f.Value)
+			if err != nil {
+				return nil, err
+			}
+		case f.Name == "Waitlist":
+			e.WaitlistNames = util.GetUsersFromValues(f.Value)
+			e.Waitlist = len(e.WaitlistNames)
+		case f.Name == "Time":
+			// no-op since start/end times comes from Links
+		default:
+			return nil, fmt.Errorf("unknown field: %s", f.Name)
 		}
 	}
+
+	if embed.Footer != nil {
+		e.Owner = util.GetUserFromFooter(embed.Footer.Text)
+	}
+	return e, nil
+}
+
+func ConvertEventToMessageEmbed(event *Event) (*discordgo.MessageEmbed, error) {
+	msg := &discordgo.MessageEmbed{}
+	acceptedName, declinedName, tentativeName := acceptedBase, declinedBase, tentativeBase
+	if event.Limit == -1 && event.Accepted > 0 {
+		acceptedName = fmt.Sprintf(acceptedName+" (%d)", event.Accepted)
+	}
+	if event.Limit > 0 && event.Accepted > 0 {
+		acceptedName = fmt.Sprintf(acceptedName+" (%d/%d)", event.Accepted, event.Limit)
+	}
+	if event.Declined > 0 {
+		declinedName = fmt.Sprintf(declinedBase+" (%d)", event.Declined)
+	}
+	if event.Tentative > 0 {
+		tentativeName = fmt.Sprintf(tentativeBase+" (%d)", event.Tentative)
+	}
+
+	fields := []*discordgo.MessageEmbedField{
+		{
+			Name:  "Time",
+			Value: util.PrintTime(event.Start, event.End),
+		},
+		{
+			Name:  "Links",
+			Value: util.PrintAddGoogleCalendarLink(event.Title, event.Description, event.Start, event.End),
+		},
+		{
+			Name:   acceptedName,
+			Value:  util.NameListToValues(event.AcceptedNames),
+			Inline: true,
+		},
+		{
+			Name:   declinedName,
+			Value:  util.NameListToValues(event.DeclinedNames),
+			Inline: true,
+		},
+		{
+			Name:   tentativeName,
+			Value:  util.NameListToValues(event.TentativeNames),
+			Inline: true,
+		},
+	}
+	if event.Waitlist > 0 || event.Accepted == event.Limit {
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:  "Waitlist",
+			Value: util.NameListToValues(event.WaitlistNames),
+		})
+	}
+
+	msg.Title = event.Title
+	msg.Description = event.Description
+	msg.Color = event.Color
+	msg.Fields = fields
+	msg.Footer = &discordgo.MessageEmbedFooter{
+		Text: fmt.Sprintf("Created by %v", event.Owner),
+	}
+	return msg, nil
 }

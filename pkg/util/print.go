@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,22 @@ func PrintTime(start, end time.Time) string {
 	return base + relative
 }
 
+// PrintHumanReadableTime prints time to a local format
+func PrintHumanReadableTime(start, end time.Time) string {
+	if end.Equal(time.Time{}) || end.Before(start) {
+		return ""
+	}
+	return fmt.Sprintf("%s", end.Sub(start).Round(time.Minute))
+}
+
+func PrintBlockValues(input string) string {
+	if input == "" {
+		return "```-```"
+	}
+	return fmt.Sprintf("```%s```", input)
+}
+
+// PrintAddGoogleCalendarLink returns a Google calendar link with event params
 func PrintAddGoogleCalendarLink(title, description string, startTime, endTime time.Time) string {
 	if endTime.IsZero() {
 		endTime = startTime
@@ -42,4 +59,30 @@ func PrintAddGoogleCalendarLink(title, description string, startTime, endTime ti
 	link := u.String() + "&dates=" + s + "/" + e
 
 	return fmt.Sprintf("[Add to Google Calendar](%s)", link)
+}
+
+// GetTimesFromLink gets start and end times from a markdown calendar link via query params
+func GetTimesFromLink(link string) (start, end time.Time, err error) {
+	result := linkRegex.FindStringSubmatch(link)
+	if len(result) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid value")
+	}
+	u, err := url.Parse(result[1])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	q := u.Query()
+	times := strings.Split(q.Get("dates"), "/")
+	if len(times) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("cannot parse time")
+	}
+	start, err = time.Parse(GoogleCalendarTimeFormat, times[0])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	end, err = time.Parse(GoogleCalendarTimeFormat, times[1])
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return start, end, nil
 }

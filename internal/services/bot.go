@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -31,16 +30,18 @@ func (b *Bot) Start() error {
 		return err
 	}
 	b.Session.AddHandler(readyEvent)
+
+	sm := internal.NewStateManager()
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionApplicationCommand:
-			if h, ok := pkg.CommandHandlers[i.ApplicationCommandData().Name]; ok {
+			if h, ok := sm.CommandHandlers[i.ApplicationCommandData().Name]; ok {
 				h(s, i)
 			} else {
 				log.Fatalln("cannot add command handler")
 			}
 		case discordgo.InteractionMessageComponent:
-			if h, ok := pkg.ComponentHandlers[i.MessageComponentData().CustomID]; ok {
+			if h, ok := sm.ComponentHandlers[i.MessageComponentData().CustomID]; ok {
 				h(s, i)
 			} else {
 				log.Fatalln("cannot add component handler")
@@ -53,7 +54,7 @@ func (b *Bot) Start() error {
 		return fmt.Errorf("cannot open session: %v", err)
 	}
 
-	for _, v := range pkg.Commands {
+	for _, v := range internal.Commands {
 		c, err := b.Session.ApplicationCommandCreate(b.Session.State.User.ID, b.Config.Discord.GuildID, v)
 		if err != nil {
 			return err

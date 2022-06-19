@@ -1,21 +1,18 @@
-package pkg
+package internal
 
 import (
+	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
 
 var (
-	eventPermission int64 = discordgo.PermissionManageEvents
-	dmPermission          = true
-	purple                = 10181046
-
 	Commands = []*discordgo.ApplicationCommand{
 		{
 			Name:                     "event",
 			Description:              "Create a new event",
-			DefaultMemberPermissions: &eventPermission,
-			DMPermission:             &dmPermission,
+			DefaultMemberPermissions: &pkg.EventPermission,
+			DMPermission:             &pkg.DMPermission,
 		},
 		//{
 		//	Name:        "my_events",
@@ -26,27 +23,34 @@ var (
 		//	Description: "Modify an existing event",
 		//},
 	}
-
-	CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"event": CreateEventHandler,
-		//"my_events": ListEventHandler,
-		//"edit":      EditEventHandler,
-	}
 )
 
-func CreateEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if sm == nil {
+		log.Printf("state manager is nil")
+		return
+	}
+
 	c, err := s.UserChannelCreate(i.Member.User.ID)
 	if err != nil {
 		log.Printf("cannot create channel: %v", err)
 		return
 	}
 
-	eb, err := NewEventBuilder(s, c, i)
+	eb, err := pkg.NewEventBuilder(s, c, i)
 	if err != nil {
 		log.Printf("cannot create builder: %v", err)
 		return
 	}
-	if err := eb.StartChat(); err != nil {
+
+	if sm.HasUser(i.Member.User.ID) {
+		pkg.NotifyCommandInProgress(s, i)
+		return
+	}
+	sm.AddUser(i.Member.User.ID)
+	defer sm.RemoveUser(i.Member.User.ID)
+
+	if err := eb.StartCreate(); err != nil {
 		log.Printf("failed to start event create chat: %v", err)
 		return
 	}
