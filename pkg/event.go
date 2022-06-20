@@ -92,14 +92,13 @@ func (e *Event) ToggleAccept(s *discordgo.Session, i *discordgo.InteractionCreat
 		e.WaitlistNames = util.RemoveUser(e.WaitlistNames, name)
 	}
 
-	if e.Limit > 0 && e.Accepted >= e.Limit {
+	if e.Limit != -1 && e.Accepted >= e.Limit && !slices.Contains(e.AcceptedNames, name) {
 		e.Waitlist++
 		e.WaitlistNames = append(e.WaitlistNames, name)
 	} else if !slices.Contains(e.AcceptedNames, name) {
 		e.Accepted++
 		e.AcceptedNames = append(e.AcceptedNames, name)
 	} else {
-		fmt.Println(e.AcceptedNames)
 		e.Accepted--
 		e.AcceptedNames = util.RemoveUser(e.AcceptedNames, name)
 		if err := e.BumpWaitlist(s, i.Interaction); err != nil {
@@ -287,7 +286,7 @@ func ConvertEventToMessageEmbed(event *Event) (*discordgo.MessageEmbed, error) {
 	if event.Limit == -1 && event.Accepted > 0 {
 		acceptedName = fmt.Sprintf(acceptedName+" (%d)", event.Accepted)
 	}
-	if event.Limit > 0 && event.Accepted > 0 {
+	if event.Limit > 0 {
 		acceptedName = fmt.Sprintf(acceptedName+" (%d/%d)", event.Accepted, event.Limit)
 	}
 	if event.Declined > 0 {

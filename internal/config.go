@@ -18,6 +18,14 @@ type Config struct {
 // NewConfig gets the bot config from the directory of the executable's path
 func NewConfig() (*Config, error) {
 	config := &Config{}
+
+	dig, token := os.Getenv("DISCORD_GUILD_ID"), os.Getenv("DISCORD_TOKEN")
+	if dig != "" && token != "" {
+		config.Discord.GuildID = dig
+		config.Secret.Token = token
+		return config, nil
+	}
+
 	path, err := os.Getwd()
 	if err != nil {
 		return nil, err

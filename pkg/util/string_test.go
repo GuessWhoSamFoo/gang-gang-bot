@@ -60,6 +60,12 @@ func TestParseFieldHeadCount(t *testing.T) {
 			expectedLimit: 10,
 		},
 		{
+			name:          "limit zero",
+			input:         "✅ Accepted (0/1)",
+			expectedCount: 0,
+			expectedLimit: 1,
+		},
+		{
 			name:          "no limit without count",
 			input:         "❔ Tentative",
 			expectedCount: -1,

@@ -21,4 +21,6 @@
 go.work
 
 .idea/
+bin/
 config.yaml
+.env

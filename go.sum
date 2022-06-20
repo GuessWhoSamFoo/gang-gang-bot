@@ -2,6 +2,8 @@ github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de h1:FxWPpzIjnTlhP
 github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de/go.mod h1:DCaWoUhZrYW9p1lxo/cm8EmUOOzAPSEZNGF2DK1dJgw=
 github.com/bwmarrin/discordgo v0.25.1-0.20220523182309-414e505c5647 h1:j1YV+BBsPbJKdtt0zSXY79WjITv592e3MWgVWXpldsc=
 github.com/bwmarrin/discordgo v0.25.1-0.20220523182309-414e505c5647/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
+github.com/bwmarrin/discordgo v0.25.1-0.20220619182011-a7f037862343 h1:sOp1ok0NC5N1rkx00Te+bq4H/CUiRpkqy/g0MGYlC2w=
+github.com/bwmarrin/discordgo v0.25.1-0.20220619182011-a7f037862343/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
