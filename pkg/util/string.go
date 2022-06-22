@@ -44,24 +44,24 @@ func ParseFieldHeadCount(fieldName string) (count int, limit int, err error) {
 	result := headCountRegex.FindStringSubmatch(fieldName)
 	l := len(result)
 	if l == 0 {
-		return -1, -1, nil
+		return 0, 0, nil
 	}
 
 	if l == 3 {
 		count, err = strconv.Atoi(result[1])
 		if err != nil {
-			return -1, -1, err
+			return 0, 0, err
 		}
 		if result[2] == "" {
-			return count, -1, nil
+			return count, 0, nil
 		}
 		limit, err = strconv.Atoi(result[2])
 		if err != nil {
-			return -1, -1, err
+			return 0, 0, err
 		}
 		return count, limit, nil
 	}
-	return -1, -1, fmt.Errorf("cannot parse field name for count")
+	return 0, 0, fmt.Errorf("cannot parse field name for count")
 }
 
 func AddUserToField(fieldValue, userName string) (string, error) {

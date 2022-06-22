@@ -74,7 +74,7 @@ var (
 		Color: Purple,
 		// TODO: Support various time input formats
 		// Description: "> Friday at 9pm\n> Tomorrow at 18:00\n> Now\n> In 1 hour\n> YYYY-MM-DD 7:00 PM",
-		Description: "> Tomorrow at 10:15am\n> Now\n> YYYY-MM-DD 7:00 PM",
+		Description: "> tomorrow at 10:15am\n> now\n> YYYY-MM-DD 7:00 PM",
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: cancelText,
 		},

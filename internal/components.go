@@ -50,7 +50,6 @@ func (sm *StateManager) DeclineHandler(s *discordgo.Session, i *discordgo.Intera
 		log.Printf("failed to get event: %v", err)
 		return
 	}
-
 	if err := e.ToggleDecline(s, i, i.Member.User.Username); err != nil {
 		log.Printf("toggle decline: %v", err)
 		return

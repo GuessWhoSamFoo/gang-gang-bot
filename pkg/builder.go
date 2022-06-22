@@ -6,6 +6,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/bwmarrin/discordgo"
 	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/tj/go-naturaldate"
 	"log"
 	"strconv"
 	"strings"
@@ -110,11 +111,6 @@ func (eb *EventBuilder) modifyEvent() error {
 	if eb.Event == nil {
 		return fmt.Errorf("event is nil")
 	}
-	// TODO: Show this be set by admin?
-	loc, err := time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		return err
-	}
 
 	for {
 		if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
@@ -131,7 +127,7 @@ func (eb *EventBuilder) modifyEvent() error {
 				},
 				{
 					Name:   "3 ⋅ Start Time",
-					Value:  fmt.Sprintf("```%s```", eb.Event.Start.In(loc).Format(util.HumanTimeFormat)),
+					Value:  fmt.Sprintf("```%s```", eb.Event.Start.In(time.Local).Format(util.HumanTimeFormat)),
 					Inline: true,
 				},
 				{
@@ -192,26 +188,30 @@ func (eb *EventBuilder) removeResponses() error {
 	if eb.Event == nil {
 		return fmt.Errorf("event is nil")
 	}
-	if eb.Event.Accepted+eb.Event.Declined+eb.Event.Tentative == 0 {
-		if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
+
+	var count int
+	for _, r := range eb.Event.RoleGroup.Roles {
+		count += r.Count
+	}
+	if count == 0 {
+		_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
 			Title: "Event doesn't have any responses",
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 	}
+
 	var desc string
+	var counter int
+	users := make([]string, 0)
 	// Braille space is used instead because hard spaces in embeds are not documented
-	for i, n := range eb.Event.AcceptedNames {
-		desc = desc + fmt.Sprintf("**%d**⠀%s %s\n", i+1, AcceptButton.Label, n)
-	}
-	for i, n := range eb.Event.DeclinedNames {
-		desc = desc + fmt.Sprintf("**%d**⠀%s %s\n", eb.Event.Accepted+i+1, DeclineButton.Label, n)
-	}
-	for i, n := range eb.Event.TentativeNames {
-		desc = desc + fmt.Sprintf("**%d**⠀%s %s\n", eb.Event.Accepted+eb.Event.Declined+i+1, TentativeButton.Label, n)
-	}
-	for i, n := range eb.Event.WaitlistNames {
-		desc = desc + fmt.Sprintf("**%d**⠀%s %s\n", eb.Event.Accepted+eb.Event.Declined+eb.Event.Tentative+i+1, "", n)
+	for _, role := range eb.Event.RoleGroup.Roles {
+		users = append(users, role.Users...)
+		for _, n := range role.Users {
+			counter++
+			desc = desc + fmt.Sprintf("**%d**⠀%s %s\n", counter, role.Icon, n)
+		}
 	}
 	if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
 		Title:       "Which responses would you like to remove?",
@@ -224,8 +224,12 @@ func (eb *EventBuilder) removeResponses() error {
 		return err
 	}
 
+	wl, ok := eb.Event.RoleGroup.Waitlist[AcceptedField]
+	if !ok {
+		return fmt.Errorf("cannot find accepted field")
+	}
 	nameMap := map[int]string{}
-	for index, name := range util.MergeSlices(eb.Event.AcceptedNames, eb.Event.DeclinedNames, eb.Event.TentativeNames, eb.Event.WaitlistNames) {
+	for index, name := range append(users, wl.Users...) {
 		nameMap[index+1] = name
 	}
 
@@ -296,11 +300,13 @@ func (eb *EventBuilder) addResponse() error {
 			continue
 		}
 		user = matches[0]
-		if util.ContainsUser(eb.Event.AcceptedNames, user) || util.ContainsUser(eb.Event.DeclinedNames, user) || util.ContainsUser(eb.Event.TentativeNames, user) || util.ContainsUser(eb.Event.WaitlistNames, user) {
-			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, userSignedUpText); err != nil {
-				return err
+		for _, r := range eb.Event.RoleGroup.Roles {
+			if util.ContainsUser(r.Users, user) {
+				if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, userSignedUpText); err != nil {
+					return err
+				}
+				return fmt.Errorf("user already signed up")
 			}
-			return fmt.Errorf("user already signed up")
 		}
 		break
 	}
@@ -447,11 +453,16 @@ func (eb *EventBuilder) SetDate() error {
 			return err
 		}
 
-		startTime, err := dateparse.ParseLocal(result.(string))
+		var startTime time.Time
+		now := time.Now()
+		startTime, err = naturaldate.Parse(result.(string), now)
 		if err != nil {
-			return fmt.Errorf("cannot parse time: %v", err)
+			startTime, err = dateparse.ParseLocal(result.(string))
+			if err != nil {
+				return fmt.Errorf("cannot parse time: %v", err)
+			}
 		}
-		if startTime.Before(time.Now()) {
+		if startTime.Before(now) {
 			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEventTimeText); err != nil {
 				return err
 			}
@@ -487,9 +498,12 @@ func (eb *EventBuilder) CreateEvent() error {
 	}
 
 	acceptedField := acceptedBase
-	if eb.Event.Limit > 0 {
-		acceptedField = acceptedField + fmt.Sprintf(" (0/%d)", eb.Event.Limit)
+	for _, r := range eb.Event.RoleGroup.Roles {
+		if r.FieldName == AcceptedField && r.Limit > 0 {
+			acceptedField = acceptedField + fmt.Sprintf(" (0/%d)", r.Limit)
+		}
 	}
+
 	msg, err := eb.Session.ChannelMessageSendComplex(eb.InteractionCreate.Interaction.ChannelID, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
 			{

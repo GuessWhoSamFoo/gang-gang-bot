@@ -5,6 +5,7 @@ import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal"
 	"github.com/bwmarrin/discordgo"
 	"log"
+	"time"
 )
 
 type Bot struct {
@@ -29,6 +30,12 @@ func (b *Bot) Start() error {
 	if err != nil {
 		return err
 	}
+
+	l, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		return err
+	}
+	time.Local = l
 	b.Session.AddHandler(readyEvent)
 
 	sm := internal.NewStateManager()
