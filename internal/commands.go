@@ -30,6 +30,10 @@ func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.In
 		log.Printf("state manager is nil")
 		return
 	}
+	if sm.CalendarClient == nil {
+		log.Println("calendar client is nil")
+		return
+	}
 
 	c, err := s.UserChannelCreate(i.Member.User.ID)
 	if err != nil {
@@ -75,13 +79,28 @@ func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.In
 		return
 	}
 
+	if err := eb.SetLocation(); err != nil {
+		log.Printf("failed to set location: %v", err)
+		return
+	}
+
 	if err := eb.SetDuration(); err != nil {
 		log.Printf("failed to set duration: %v", err)
 		return
 	}
 
+	if err := sm.CalendarClient.CreateGoogleEvent(eb.Event); err != nil {
+		log.Printf("failed to add event to calendar: %v", err)
+		return
+	}
+
 	if err := eb.CreateEvent(); err != nil {
 		log.Printf("failed to create event: %v", err)
+		return
+	}
+
+	if err := sm.CalendarClient.UpdateEvent(eb.Event); err != nil {
+		log.Printf("failed to add discord link to calendar: %v", err)
 		return
 	}
 }

@@ -27,6 +27,7 @@ type EventBuilder struct {
 	GuildID           string
 	InteractionCreate *discordgo.InteractionCreate
 	Action            ActionType
+	CalendarID        string
 }
 
 // NewEventBuilder manages the lifecycle of an event creation
@@ -42,6 +43,7 @@ func NewEventBuilder(s *discordgo.Session, c *discordgo.Channel, ic *discordgo.I
 	}, nil
 }
 
+// StartCreate starts the sequence of prompts to create a new event
 func (eb *EventBuilder) StartCreate() error {
 	if err := eb.Session.InteractionRespond(eb.InteractionCreate.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -70,7 +72,7 @@ func (eb *EventBuilder) StartEdit() error {
 	}
 	eb.Event = event
 	eb.Action = EditType
-
+	eb.Event.DiscordLink = fmt.Sprintf("https://discord.com/channels/%s/%s/%s", eb.InteractionCreate.GuildID, eb.InteractionCreate.Interaction.ChannelID, eb.InteractionCreate.Interaction.Message.ID)
 	if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterEditOptionMessage); err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -135,6 +137,10 @@ func (eb *EventBuilder) modifyEvent() error {
 					Value:  util.PrintBlockValues(util.PrintHumanReadableTime(eb.Event.Start, eb.Event.End)),
 					Inline: true,
 				},
+				{
+					Name:  "5 ⋅ Location",
+					Value: fmt.Sprintf("```%s```", eb.Event.Location),
+				},
 			},
 			Footer: &discordgo.MessageEmbedFooter{
 				Text: optionText + "\n" + cancelText,
@@ -162,6 +168,10 @@ func (eb *EventBuilder) modifyEvent() error {
 			}
 		case option == "4":
 			if err := eb.SetDuration(); err != nil {
+				return err
+			}
+		case option == "5":
+			if err := eb.SetLocation(); err != nil {
 				return err
 			}
 		default:
@@ -455,7 +465,7 @@ func (eb *EventBuilder) SetDate() error {
 
 		var startTime time.Time
 		now := time.Now()
-		startTime, err = naturaldate.Parse(result.(string), now)
+		startTime, err = naturaldate.Parse(result.(string), now, naturaldate.WithDirection(naturaldate.Future))
 		if err != nil {
 			startTime, err = dateparse.ParseLocal(result.(string))
 			if err != nil {
@@ -492,6 +502,25 @@ func (eb *EventBuilder) SetDuration() error {
 	return nil
 }
 
+// SetLocation sets the location of an event
+func (eb *EventBuilder) SetLocation() error {
+	_, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EnterLocationMessage)
+	if err != nil {
+		return fmt.Errorf("failed to send message: %v", err)
+	}
+
+	result, err := eb.waitForInput(time.Second * 60)
+	if err != nil {
+		return fmt.Errorf("cannot parse location: %v", err)
+	}
+
+	if err := eb.Event.SetLocation(result.(string)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateEvent converts the internal event object to a Discord message
 func (eb *EventBuilder) CreateEvent() error {
 	if eb.InteractionCreate.Interaction.Member == nil {
 		return fmt.Errorf("cannot find user who created event")
@@ -517,8 +546,18 @@ func (eb *EventBuilder) CreateEvent() error {
 						Value: util.PrintTime(eb.Event.Start, eb.Event.End),
 					},
 					{
-						Name:  "Links",
-						Value: util.PrintAddGoogleCalendarLink(eb.Event.Title, eb.Event.Description, eb.Event.Start, eb.Event.End),
+						Name:   "Links",
+						Value:  util.PrintAddGoogleCalendarLink(eb.Event.Title, eb.Event.Description, eb.Event.Start, eb.Event.End),
+						Inline: true,
+					},
+					{
+						Name:   "Location",
+						Value:  eb.Event.Location,
+						Inline: true,
+					},
+					{
+						Name:  "Calendar",
+						Value: util.PrintGoogleCalendarEventLink(eb.Event.ID),
 					},
 					{
 						Name:   acceptedField,
@@ -557,10 +596,11 @@ func (eb *EventBuilder) CreateEvent() error {
 		return err
 	}
 
+	eb.Event.DiscordLink = fmt.Sprintf("https://discord.com/channels/%s/%s/%s", eb.InteractionCreate.GuildID, eb.InteractionCreate.Interaction.ChannelID, msg.ID)
 	_, err = eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
 		Title:       "Event has been created",
 		Color:       Purple,
-		Description: fmt.Sprintf("[Click here to view the event](https://discord.com/channels/%s/%s/%s)", eb.InteractionCreate.GuildID, eb.InteractionCreate.Interaction.ChannelID, msg.ID),
+		Description: fmt.Sprintf("[Click here to view the event](%s)", eb.Event.DiscordLink),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)

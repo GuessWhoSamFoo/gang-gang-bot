@@ -31,6 +31,11 @@ func Test_getEventFromMessage(t *testing.T) {
 								Name:  string(WaitlistField),
 								Value: "> test",
 							},
+							{
+								Name:   "Calendar",
+								Value:  util.PrintGoogleCalendarEventLink("MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw"),
+								Inline: true,
+							},
 						},
 						Footer: &discordgo.MessageEmbedFooter{
 							Text: "Created by test",
@@ -50,7 +55,7 @@ func Test_getEventFromMessage(t *testing.T) {
 						},
 					},
 					Waitlist: map[FieldType]*Role{
-						AcceptedField: &Role{
+						AcceptedField: {
 							Icon:      "",
 							FieldName: WaitlistField,
 							Users:     []string{"test"},
@@ -60,6 +65,7 @@ func Test_getEventFromMessage(t *testing.T) {
 				},
 				Owner: "test",
 				Color: 1234,
+				ID:    "MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw",
 			},
 		},
 	}
@@ -92,6 +98,7 @@ func Test_convertEventToMessageEmbed(t *testing.T) {
 				RoleGroup:   rg,
 				Color:       1234,
 				Owner:       "foo",
+				ID:          "MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw",
 			},
 			expected: &discordgo.MessageEmbed{
 				Title:       "testing",
@@ -103,8 +110,13 @@ func Test_convertEventToMessageEmbed(t *testing.T) {
 						Value: util.PrintTime(time.Time{}, time.Time{}),
 					},
 					{
-						Name:  "Links",
-						Value: util.PrintAddGoogleCalendarLink("testing", "hello world", time.Time{}, time.Time{}),
+						Name:   "Links",
+						Value:  util.PrintAddGoogleCalendarLink("testing", "hello world", time.Time{}, time.Time{}),
+						Inline: true,
+					},
+					{
+						Name:  "Calendar",
+						Value: util.PrintGoogleCalendarEventLink("MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw"),
 					},
 					{
 						Name:   acceptedBase + " (1)",

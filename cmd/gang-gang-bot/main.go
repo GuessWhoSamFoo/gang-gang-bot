@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/services"
 	"log"
 	"os"
 	"os/signal"
@@ -14,7 +13,7 @@ func main() {
 	if err != nil {
 		log.Fatalln("Failed to get config file")
 	}
-	bot, err := services.NewBot(config)
+	bot, err := internal.NewBot(config)
 	if err != nil {
 		log.Fatalln("Failed initialize bot")
 	}

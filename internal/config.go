@@ -1,14 +1,25 @@
 package internal
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v3"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+)
+
+const (
+	configFileName     = "config.yaml"
+	credentialFileName = "credentials.json"
 )
 
 type Config struct {
 	Discord struct {
 		GuildID string `yaml:"guild_id"`
+	}
+	Google struct {
+		CalendarID  string `yaml:"calendar_id"`
+		Credentials []byte `yaml:"credentials,omitempty"`
 	}
 	Secret struct {
 		Token string `yaml:"token"`
@@ -18,6 +29,17 @@ type Config struct {
 // NewConfig gets the bot config from the directory of the executable's path
 func NewConfig() (*Config, error) {
 	config := &Config{}
+
+	var err error
+	credentials := os.Getenv("GOOGLE_CREDENTIALS")
+	if credentials == "" {
+		config.Google.Credentials, err = ioutil.ReadFile(credentialFileName)
+		if err != nil {
+			return nil, fmt.Errorf("cannot find google credentials: %v", err)
+		}
+	} else {
+		config.Google.Credentials = []byte(credentials)
+	}
 
 	dig, token := os.Getenv("DISCORD_GUILD_ID"), os.Getenv("DISCORD_TOKEN")
 	if dig != "" && token != "" {
@@ -30,7 +52,7 @@ func NewConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.Open(filepath.Join(path, "config.yaml"))
+	file, err := os.Open(filepath.Join(path, configFileName))
 	if err != nil {
 		return nil, err
 	}

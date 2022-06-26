@@ -20,11 +20,14 @@ var (
 type Event struct {
 	Title       string
 	Description string
+	Location    string
 	Start       time.Time
 	End         time.Time
 	RoleGroup   *RoleGroup
 	Owner       string
 	Color       int
+	ID          string // base64 encoded eventID + calendarID
+	DiscordLink string
 	// TODO: image, frequency, localization
 }
 
@@ -66,6 +69,14 @@ func (e *Event) SetDuration(length string) error {
 		return err
 	}
 	e.End = end
+	return nil
+}
+
+func (e *Event) SetLocation(location string) error {
+	if location == "" {
+		return nil
+	}
+	e.Location = location
 	return nil
 }
 
@@ -161,6 +172,7 @@ func (e *Event) NotifyUserOffWaitlist(s *discordgo.Session, i *discordgo.Interac
 	return nil
 }
 
+// NotifyCommandInProgress notifies a user if another interaction is pending input
 func NotifyCommandInProgress(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -175,6 +187,7 @@ func NotifyCommandInProgress(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 }
 
+// GetEventFromMessage converts a Discord message into an event type
 func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 	if len(msg.Embeds) != 1 {
 		return nil, fmt.Errorf("expected 1 embed: got %d", len(msg.Embeds))
@@ -194,6 +207,7 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 			},
 		},
 	}
+	var err error
 	for _, f := range embed.Fields {
 		switch {
 		case strings.Contains(f.Name, acceptedBase):
@@ -226,11 +240,17 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 				Count:     len(users),
 			})
 		case f.Name == "Links":
-			var err error
 			e.Start, e.End, err = util.GetTimesFromLink(f.Value)
 			if err != nil {
 				return nil, err
 			}
+		case f.Name == "Calendar":
+			e.ID, err = util.ParseEventID(f.Value)
+			if err != nil {
+				return nil, err
+			}
+		case f.Name == "Location":
+			e.Location = f.Value
 		case f.Name == string(WaitlistField):
 			users := util.GetUsersFromValues(f.Value)
 			e.RoleGroup.Waitlist[AcceptedField] = &Role{
@@ -244,6 +264,9 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 		default:
 			return nil, fmt.Errorf("unknown field: %s", f.Name)
 		}
+	}
+	if msg.GuildID != "" && msg.ChannelID != "" && msg.ID != "" {
+		e.DiscordLink = fmt.Sprintf("https://discord.com/channels/%s/%s/%s", msg.GuildID, msg.ChannelID, msg.ID)
 	}
 
 	if embed.Footer != nil {
@@ -260,10 +283,26 @@ func ConvertEventToMessageEmbed(event *Event) (*discordgo.MessageEmbed, error) {
 			Value: util.PrintTime(event.Start, event.End),
 		},
 		{
-			Name:  "Links",
-			Value: util.PrintAddGoogleCalendarLink(event.Title, event.Description, event.Start, event.End),
+			Name:   "Links",
+			Value:  util.PrintAddGoogleCalendarLink(event.Title, event.Description, event.Start, event.End),
+			Inline: true,
 		},
 	}
+
+	if event.Location != "" {
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:   "Location",
+			Value:  event.Location,
+			Inline: true,
+		})
+	}
+	if event.ID != "" {
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:  "Calendar",
+			Value: util.PrintGoogleCalendarEventLink(event.ID),
+		})
+	}
+
 	for _, role := range event.RoleGroup.Roles {
 		name := fmt.Sprintf("%s %s", role.Icon, role.FieldName)
 		if role.Limit == 0 && role.Count > 0 {

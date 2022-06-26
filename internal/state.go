@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/services"
 	"github.com/bwmarrin/discordgo"
 	"sync"
 )
@@ -9,10 +10,14 @@ type StateManager struct {
 	ActiveMap
 	CommandHandlers   map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 	ComponentHandlers map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
+	CalendarClient    *services.CalendarClient
+	Config            *Config
 }
 
-func NewStateManager() *StateManager {
-	sm := &StateManager{}
+func NewStateManager(config *Config) *StateManager {
+	sm := &StateManager{
+		Config: config,
+	}
 	sm.ActiveMap = ActiveMap{
 		userMap: make(map[string]struct{}),
 	}
@@ -32,6 +37,7 @@ func NewStateManager() *StateManager {
 	return sm
 }
 
+// ActiveMap is a locking key value store
 type ActiveMap struct {
 	mu      sync.Mutex
 	userMap map[string]struct{}

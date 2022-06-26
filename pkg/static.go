@@ -89,6 +89,14 @@ var (
 		},
 	}
 
+	EnterLocationMessage = discordgo.MessageEmbed{
+		Title: "Where does this event take place?",
+		Color: Purple,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: cancelText,
+		},
+	}
+
 	CommandInProcessMessage = discordgo.MessageEmbed{
 		Title:       "You have another command in process",
 		Color:       Purple,

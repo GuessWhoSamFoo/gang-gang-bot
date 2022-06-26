@@ -61,6 +61,20 @@ func PrintAddGoogleCalendarLink(title, description string, startTime, endTime ti
 	return fmt.Sprintf("[Add to Google Calendar](%s)", link)
 }
 
+// PrintGoogleCalendarEventLink prints a link to a Google calendar event using base64 encoding
+func PrintGoogleCalendarEventLink(ID string) string {
+	u, _ := url.Parse("https://www.google.com/calendar/event?eid=")
+	q := u.Query()
+	q.Set("eid", ID)
+	u.RawQuery = q.Encode()
+	return fmt.Sprintf("[View in Calendar](%s)", u.String())
+}
+
+func PrintGoogleCalendarDescription(description string, discordLink string) string {
+	result := description + fmt.Sprintf("\n%s\n%s", LineFeed, discordLink)
+	return result
+}
+
 // GetTimesFromLink gets start and end times from a markdown calendar link via query params
 func GetTimesFromLink(link string) (start, end time.Time, err error) {
 	result := linkRegex.FindStringSubmatch(link)

@@ -223,3 +223,50 @@ func TestIsInputOption(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeToGoogleCalendarBase64(t *testing.T) {
+	cases := []struct {
+		name       string
+		eventID    string
+		calendarID string
+		expected   string
+	}{
+		{
+			name:       "base",
+			eventID:    "2vpae347k2a70gbhnmgmve9fll",
+			calendarID: "s8lsr7ohbqi5u52b89vmvmq1ak@group.calendar.google.com",
+			expected:   "MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := EncodeToGoogleCalendarBase64(tc.eventID, tc.calendarID)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestDecodeToGoogleEventID(t *testing.T) {
+	cases := []struct {
+		name               string
+		input              string
+		expectedEventID    string
+		expectedCalendarID string
+	}{
+		{
+			name:               "base",
+			input:              "MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw",
+			expectedEventID:    "2vpae347k2a70gbhnmgmve9fll",
+			expectedCalendarID: "s8lsr7ohbqi5u52b89vmvmq1ak@group.calendar.google.com",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eventID, calendarID, err := DecodeToGoogleEventID(tc.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedEventID, eventID)
+			assert.Equal(t, tc.expectedCalendarID, calendarID)
+		})
+	}
+}

@@ -1,8 +1,10 @@
-package services
+package internal
 
 import (
+	"context"
 	"fmt"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/services"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
 	"log"
 	"time"
@@ -11,10 +13,10 @@ import (
 type Bot struct {
 	Session    *discordgo.Session
 	CommandMap map[string]string // id:name
-	Config     *internal.Config
+	Config     *Config
 }
 
-func NewBot(c *internal.Config) (*Bot, error) {
+func NewBot(c *Config) (*Bot, error) {
 	return &Bot{
 		CommandMap: map[string]string{},
 		Config:     c,
@@ -22,23 +24,31 @@ func NewBot(c *internal.Config) (*Bot, error) {
 }
 
 func (b *Bot) Start() error {
+	ctx := context.Background()
+	sm := NewStateManager(b.Config)
+
 	if b.Session != nil {
 		return fmt.Errorf("session exists")
 	}
+
 	var err error
-	b.Session, err = NewDiscordSession(b.Config.Secret.Token)
+	c, err := services.NewCalendarClient(ctx, b.Config.Google.CalendarID, b.Config.Google.Credentials)
+	if err != nil {
+		return err
+	}
+	sm.CalendarClient = c
+
+	b.Session, err = services.NewDiscordSession(b.Config.Secret.Token)
 	if err != nil {
 		return err
 	}
 
-	l, err := time.LoadLocation("America/Los_Angeles")
+	l, err := time.LoadLocation(util.StaticLocation)
 	if err != nil {
 		return err
 	}
 	time.Local = l
-	b.Session.AddHandler(readyEvent)
-
-	sm := internal.NewStateManager()
+	b.Session.AddHandler(services.ReadyEvent)
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionApplicationCommand:
@@ -61,7 +71,7 @@ func (b *Bot) Start() error {
 		return fmt.Errorf("cannot open session: %v", err)
 	}
 
-	for _, v := range internal.Commands {
+	for _, v := range Commands {
 		c, err := b.Session.ApplicationCommandCreate(b.Session.State.User.ID, b.Config.Discord.GuildID, v)
 		if err != nil {
 			return err

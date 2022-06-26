@@ -102,6 +102,11 @@ func (sm *StateManager) TentativeHandler(s *discordgo.Session, i *discordgo.Inte
 
 func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: Check server permissions before edit
+	if sm.CalendarClient == nil {
+		log.Println("calendar client is nil")
+		return
+	}
+
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 	}); err != nil {
@@ -132,6 +137,11 @@ func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.Interacti
 		return
 	}
 
+	if err := sm.CalendarClient.UpdateEvent(eb.Event); err != nil {
+		log.Printf("failed to update calendar: %v", err)
+		return
+	}
+
 	if err := eb.ProcessEdit(); err != nil {
 		log.Printf("failed to confirm edit: %v", err)
 		return
@@ -140,6 +150,11 @@ func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.Interacti
 
 func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: Check server permissions before delete
+	if sm == nil || sm.CalendarClient == nil {
+		log.Printf("cannot find state manager email client")
+		return
+	}
+
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 	}); err != nil {
@@ -184,6 +199,11 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 }
 
 func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if sm == nil || sm.CalendarClient == nil {
+		log.Printf("cannot find state manager email client")
+		return
+	}
+
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 	}); err != nil {
@@ -205,6 +225,20 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 	_, channelID, messageID, err := util.GetIDsFromDeleteLink(url)
 	if err != nil {
 		log.Printf("failed to get ID from link: %v", err)
+		return
+	}
+
+	msg, err := s.ChannelMessage(channelID, messageID)
+	if err != nil {
+		return
+	}
+	cEvent, err := pkg.GetEventFromMessage(msg)
+	if err != nil {
+		return
+	}
+
+	if err := sm.CalendarClient.DeleteEvent(cEvent); err != nil {
+		log.Printf("cannot delete google event: %v", err)
 		return
 	}
 
