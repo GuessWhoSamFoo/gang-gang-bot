@@ -90,7 +90,7 @@ func (c *CalendarClient) DeleteEvent(event *pkg.Event) error {
 	return nil
 }
 
-// toGooglEvent converts the event type to a calendar event
+// toGoogleEvent converts the event type to a calendar event
 func toGoogleEvent(event *pkg.Event) *calendar.Event {
 	if event == nil {
 		return nil

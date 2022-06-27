@@ -70,6 +70,12 @@ func (eb *EventBuilder) StartEdit() error {
 	if err != nil {
 		return err
 	}
+	if eb.InteractionCreate.Member.User.Username != event.Owner && eb.InteractionCreate.Interaction.Member.Permissions&discordgo.PermissionManageEvents == 0 {
+		if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, EditInsufficientPermissionMessage); err != nil {
+			return fmt.Errorf("failed to send message: %v", err)
+		}
+		return fmt.Errorf("insufficient permissions to edit %s", eb.InteractionCreate.Interaction.Message.ID)
+	}
 	eb.Event = event
 	eb.Action = EditType
 	eb.Event.DiscordLink = fmt.Sprintf("https://discord.com/channels/%s/%s/%s", eb.InteractionCreate.GuildID, eb.InteractionCreate.Interaction.ChannelID, eb.InteractionCreate.Interaction.Message.ID)

@@ -126,4 +126,15 @@ var (
 		Description: "**1** No, I'm all done\n**2** Yes, keep editing",
 		Color:       Purple,
 	}
+
+	DeleteInsufficientPermissionMessage = &discordgo.MessageEmbed{
+		Title: "You don't have permission to delete that event",
+		Color: Purple,
+	}
+
+	EditInsufficientPermissionMessage = &discordgo.MessageEmbed{
+		Title:       "You don't have permission to do that",
+		Description: "You must either be the event organizer or have the `Manage Server` permission to edit events.",
+		Color:       Purple,
+	}
 )

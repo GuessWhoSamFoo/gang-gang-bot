@@ -41,6 +41,11 @@ func NewConfig() (*Config, error) {
 		config.Google.Credentials = []byte(credentials)
 	}
 
+	calendarID := os.Getenv("GOOGLE_CALENDAR_ID")
+	if calendarID != "" {
+		config.Google.CalendarID = calendarID
+	}
+
 	dig, token := os.Getenv("DISCORD_GUILD_ID"), os.Getenv("DISCORD_TOKEN")
 	if dig != "" && token != "" {
 		config.Discord.GuildID = dig

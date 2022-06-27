@@ -28,12 +28,14 @@ should not be committed to version control or uploaded online without encryption
 
 ```
 discord:
-  guild_id: {{ GUILD_ID }}
+  guild_id: {{ DISCORD_GUILD_ID }}
+google:
+  calendar_id: {{ GOOGLE_CALENDAR_ID }}
 secret:
   token: {{ DISCORD_BOT_TOKEN }}
 ```
 
-If using Heroku, see [docs/](/docs/heroku.md).
+If using Heroku, see [docs/](/docs/heroku.md). For initial calendar setup, go [here](/docs/google.md).
 
 3. Add the bot to a server for testing. See [this guide](https://discordjs.guide/preparations/adding-your-bot-to-servers.html#adding-your-bot-to-servers)
 for detailed instructions. It is possible to invite a users to app test or create a link through the OAuth2 URL Generator.

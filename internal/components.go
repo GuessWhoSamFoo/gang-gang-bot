@@ -172,6 +172,14 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 		log.Printf("failed to get event: %v", err)
 		return
 	}
+	if i.Member.User.Username != e.Owner && i.Interaction.Member.Permissions&discordgo.PermissionManageEvents == 0 {
+		if _, err := s.ChannelMessageSendEmbed(c.ID, pkg.DeleteInsufficientPermissionMessage); err != nil {
+			log.Printf("failed to send message: %v", err)
+			return
+		}
+		log.Printf("insufficient permissions to delete %s", i.Interaction.Message.ID)
+		return
+	}
 
 	if _, err := s.ChannelMessageSendComplex(c.ID, &discordgo.MessageSend{
 		Embeds: []*discordgo.MessageEmbed{
