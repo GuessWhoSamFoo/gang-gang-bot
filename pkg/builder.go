@@ -429,7 +429,7 @@ func (eb *EventBuilder) SetAttendeeLimit() error {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
 
-	for i := 0; i < 3; i++ {
+	for {
 		result, err := eb.waitForInput(time.Second * 60)
 		if err != nil {
 			return err
@@ -442,18 +442,22 @@ func (eb *EventBuilder) SetAttendeeLimit() error {
 
 		val, err := strconv.Atoi(s)
 		if err != nil {
-			return err
+			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEventLimitText); err != nil {
+				return err
+			}
+			continue
 		}
 
 		if val >= 1 && val <= 250 {
 			eb.Event.SetMaximumAttendees(val)
-			return nil
-		}
-		if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEventLimitText); err != nil {
-			return err
+			break
+		} else {
+			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEventLimitText); err != nil {
+				return err
+			}
 		}
 	}
-	return fmt.Errorf("unable to set attendee limit")
+	return nil
 }
 
 // SetDate sets the starting time of an event. It attempts to parse time in natural language
@@ -475,7 +479,10 @@ func (eb *EventBuilder) SetDate() error {
 		if err != nil {
 			startTime, err = dateparse.ParseLocal(result.(string))
 			if err != nil {
-				return fmt.Errorf("cannot parse time: %v", err)
+				if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidStartTimeText); err != nil {
+					return fmt.Errorf("cannot set start time: %v", err)
+				}
+				continue
 			}
 		}
 		if startTime.Before(now) {
@@ -497,13 +504,18 @@ func (eb *EventBuilder) SetDuration() error {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
 
-	result, err := eb.waitForInput(time.Second * 60)
-	if err != nil {
-		return fmt.Errorf("cannot parse duration: %v", err)
-	}
-
-	if err := eb.Event.SetDuration(result.(string)); err != nil {
-		return err
+	for {
+		result, err := eb.waitForInput(time.Second * 60)
+		if err != nil {
+			return fmt.Errorf("cannot parse duration: %v", err)
+		}
+		if err := eb.Event.SetDuration(result.(string)); err != nil {
+			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidDurationText); err != nil {
+				return fmt.Errorf("cannot set duration: %v", err)
+			}
+			continue
+		}
+		break
 	}
 	return nil
 }
@@ -632,13 +644,13 @@ func (eb *EventBuilder) waitForInput(timeout time.Duration) (interface{}, error)
 			if result == "" {
 				continue
 			}
-			if result == "cancel" {
+			if strings.EqualFold(result, "cancel") {
 				if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, fmt.Sprintf("Event %s has been canceled", eb.Action)); err != nil {
 					return nil, err
 				}
 				return nil, fmt.Errorf("canceled event %s", eb.Action)
 			}
-			if result == "None" {
+			if strings.EqualFold(result, "none") {
 				result = ""
 			}
 			return result, nil
