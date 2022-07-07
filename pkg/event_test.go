@@ -151,3 +151,50 @@ func Test_convertEventToMessageEmbed(t *testing.T) {
 		})
 	}
 }
+
+func TestEvent_SetDuration(t *testing.T) {
+	now := time.Now()
+
+	cases := []struct {
+		input    string
+		expected time.Time
+		isErr    bool
+	}{
+		{
+			input:    "1 hour",
+			expected: now.Add(time.Hour),
+		},
+		{
+			input:    "1 hour and 30 minutes",
+			expected: now.Add(time.Minute * 90),
+		},
+		{
+			input:    "1 hour 30 minutes",
+			expected: now.Add(time.Minute * 90),
+		},
+		{
+			input: "1hr 30 minutes",
+			isErr: true,
+		},
+		{
+			input:    "invalid",
+			expected: now,
+		},
+		// TODO: Find a more configurable parser
+		//{
+		//	input:    "1h30m",
+		//	expected: now.Add(time.Minute * 90),
+		//},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			event := &Event{Start: now}
+			err := event.SetDuration(tc.input)
+			if !tc.isErr {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expected, event.End)
+		})
+	}
+}

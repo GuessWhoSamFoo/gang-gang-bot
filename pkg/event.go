@@ -68,6 +68,9 @@ func (e *Event) SetDuration(length string) error {
 	if err != nil {
 		return err
 	}
+	if end.Before(e.Start) {
+		return fmt.Errorf("cannot set end before start time")
+	}
 	e.End = end
 	return nil
 }
