@@ -73,9 +73,7 @@ func Test_getEventFromMessage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := GetEventFromMessage(tc.input)
-			if err != nil {
-				t.Fatalf("unexpected err: %v", err)
-			}
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, got)
 		})
 	}
@@ -144,9 +142,7 @@ func Test_convertEventToMessageEmbed(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ConvertEventToMessageEmbed(tc.input)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, got)
 		})
 	}

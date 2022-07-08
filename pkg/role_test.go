@@ -5,6 +5,17 @@ import (
 	"testing"
 )
 
+func TestRoleGroup_AddWaitlistForRole(t *testing.T) {
+	rg := NewDefaultRoleGroup()
+	rg.AddWaitlistForRole("test", AcceptedField)
+	role := &Role{
+		Icon:      "test",
+		FieldName: WaitlistField,
+		Users:     []string{},
+	}
+	assert.Equal(t, role, rg.Waitlist[AcceptedField])
+}
+
 func TestRoleGroup_ToggleRole(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -462,6 +473,88 @@ func TestRoleGroup_ToggleRole(t *testing.T) {
 			err := tc.roleGroup.ToggleRole(tc.fieldName, tc.user)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, tc.roleGroup)
+		})
+	}
+}
+
+func TestRoleGroup_RemoveFromAllLists(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		rg       *RoleGroup
+		expected *RoleGroup
+	}{
+		{
+			name:  "remove empty",
+			input: "foo",
+			rg: &RoleGroup{
+				Roles:    []*Role{},
+				Waitlist: map[FieldType]*Role{},
+			},
+			expected: &RoleGroup{
+				Roles:    []*Role{},
+				Waitlist: map[FieldType]*Role{},
+			},
+		},
+		{
+			name:  "remove from list",
+			input: "foo",
+			rg: &RoleGroup{
+				Roles: []*Role{
+					{
+						Users: []string{"foo"},
+						Count: 1,
+					},
+				},
+				Waitlist: map[FieldType]*Role{},
+			},
+			expected: &RoleGroup{
+				Roles: []*Role{
+					{
+						Users: []string{},
+					},
+				},
+				Waitlist: map[FieldType]*Role{},
+			},
+		},
+		{
+			name:  "remove from waitlist",
+			input: "foo",
+			rg: &RoleGroup{
+				Roles: []*Role{
+					{
+						FieldName: AcceptedField,
+						Users:     []string{},
+					},
+				},
+				Waitlist: map[FieldType]*Role{
+					AcceptedField: {
+						Users: []string{"foo"},
+						Count: 1,
+					},
+				},
+			},
+			expected: &RoleGroup{
+				Roles: []*Role{
+					{
+						FieldName: AcceptedField,
+						Users:     []string{},
+					},
+				},
+				Waitlist: map[FieldType]*Role{
+					AcceptedField: {
+						Users: []string{},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.rg.RemoveFromAllLists(tc.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, tc.rg)
 		})
 	}
 }

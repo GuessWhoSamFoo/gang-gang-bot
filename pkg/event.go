@@ -47,9 +47,9 @@ func (e *Event) AddDescription(description string) {
 	e.Description = description
 }
 
-func (e *Event) SetMaximumAttendees(number int) {
+func (e *Event) SetMaximumAttendees(field FieldType, number int) {
 	for _, r := range e.RoleGroup.Roles {
-		if r.FieldName == AcceptedField {
+		if r.FieldName == field {
 			r.Limit = number
 			return
 		}

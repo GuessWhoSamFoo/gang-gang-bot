@@ -119,41 +119,40 @@ func (eb *EventBuilder) modifyEvent() error {
 	if eb.Event == nil {
 		return fmt.Errorf("event is nil")
 	}
-
+	if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
+		Title: "What would you like to modify?",
+		Color: Purple,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:  "1 ⋅ Title",
+				Value: util.PrintBlockValues(eb.Event.Title),
+			},
+			{
+				Name:  "2 ⋅ Description",
+				Value: util.PrintBlockValues(eb.Event.Description),
+			},
+			{
+				Name:   "3 ⋅ Start Time",
+				Value:  fmt.Sprintf("```%s```", eb.Event.Start.In(time.Local).Format(util.HumanTimeFormat)),
+				Inline: true,
+			},
+			{
+				Name:   "4 ⋅ Duration",
+				Value:  util.PrintBlockValues(util.PrintHumanReadableTime(eb.Event.Start, eb.Event.End)),
+				Inline: true,
+			},
+			{
+				Name:  "5 ⋅ Location",
+				Value: fmt.Sprintf("```%s```", eb.Event.Location),
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: optionText + "\n" + cancelText,
+		},
+	}); err != nil {
+		return err
+	}
 	for {
-		if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &discordgo.MessageEmbed{
-			Title: "What would you like to modify?",
-			Color: Purple,
-			Fields: []*discordgo.MessageEmbedField{
-				{
-					Name:  "1 ⋅ Title",
-					Value: util.PrintBlockValues(eb.Event.Title),
-				},
-				{
-					Name:  "2 ⋅ Description",
-					Value: util.PrintBlockValues(eb.Event.Description),
-				},
-				{
-					Name:   "3 ⋅ Start Time",
-					Value:  fmt.Sprintf("```%s```", eb.Event.Start.In(time.Local).Format(util.HumanTimeFormat)),
-					Inline: true,
-				},
-				{
-					Name:   "4 ⋅ Duration",
-					Value:  util.PrintBlockValues(util.PrintHumanReadableTime(eb.Event.Start, eb.Event.End)),
-					Inline: true,
-				},
-				{
-					Name:  "5 ⋅ Location",
-					Value: fmt.Sprintf("```%s```", eb.Event.Location),
-				},
-			},
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: optionText + "\n" + cancelText,
-			},
-		}); err != nil {
-			return err
-		}
 		result, err := eb.waitForInput(time.Second * 60)
 		if err != nil {
 			return err
@@ -184,6 +183,7 @@ func (eb *EventBuilder) modifyEvent() error {
 			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEntryText); err != nil {
 				return err
 			}
+			continue
 		}
 		if _, err := eb.Session.ChannelMessageSendEmbed(eb.Channel.ID, &EditConfirmationMessage); err != nil {
 			return err
@@ -216,6 +216,7 @@ func (eb *EventBuilder) removeResponses() error {
 		if err != nil {
 			return err
 		}
+		return nil
 	}
 
 	var desc string
@@ -321,7 +322,7 @@ func (eb *EventBuilder) addResponse() error {
 				if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, userSignedUpText); err != nil {
 					return err
 				}
-				return fmt.Errorf("user already signed up")
+				return fmt.Errorf("user %s already signed up", user)
 			}
 		}
 		break
@@ -449,7 +450,7 @@ func (eb *EventBuilder) SetAttendeeLimit() error {
 		}
 
 		if val >= 1 && val <= 250 {
-			eb.Event.SetMaximumAttendees(val)
+			eb.Event.SetMaximumAttendees(AcceptedField, val)
 			break
 		} else {
 			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, invalidEventLimitText); err != nil {

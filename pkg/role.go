@@ -118,12 +118,12 @@ func (rg *RoleGroup) ToggleRole(fieldName FieldType, user string) error {
 // RemoveFromAllLists removes a username from all role groups including waitlists
 func (rg *RoleGroup) RemoveFromAllLists(name string) error {
 	for _, r := range rg.Roles {
-		r.Count--
 		r.Users = util.RemoveUser(r.Users, name)
+		r.Count = len(r.Users)
 		wl, ok := rg.Waitlist[r.FieldName]
 		if ok {
-			wl.Count--
 			wl.Users = util.RemoveUser(wl.Users, name)
+			wl.Count = len(wl.Users)
 		}
 	}
 	return nil

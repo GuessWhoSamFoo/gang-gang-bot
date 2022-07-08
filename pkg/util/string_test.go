@@ -33,7 +33,7 @@ func TestGetLinkFromDeleteDescription(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := GetLinkFromDeleteDescription(tc.input)
 			if err == nil && tc.isErr {
-				t.Fatalf("expected err: %v", tc.name)
+				assert.Error(t, err)
 			}
 			assert.Equal(t, tc.expected, got)
 		})
@@ -64,6 +64,12 @@ func TestParseFieldHeadCount(t *testing.T) {
 			input:         "✅ Accepted (0/1)",
 			expectedCount: 0,
 			expectedLimit: 1,
+		},
+		{
+			name:          "limit declined",
+			input:         "❌ Declined (12/25)",
+			expectedCount: 12,
+			expectedLimit: 25,
 		},
 		{
 			name:          "no limit without count",
@@ -196,6 +202,36 @@ func TestNameListToValues(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.expected, NameListToValues(tc.input))
+		})
+	}
+}
+
+func TestGetUserFromFooter(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "has match",
+			input:    "Created by a funky dude",
+			expected: "a funky dude",
+		},
+		{
+			name:     "invalid input",
+			input:    "not a real footer",
+			expected: "",
+		},
+		{
+			name:     "non english chars",
+			input:    "Created by Weirdo ハロー・ワールド",
+			expected: "Weirdo ハロー・ワールド",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, GetUserFromFooter(tc.input))
 		})
 	}
 }

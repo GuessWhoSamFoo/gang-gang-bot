@@ -146,6 +146,7 @@ func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.Interacti
 		log.Printf("failed to confirm edit: %v", err)
 		return
 	}
+	log.Printf("User: %s edited event %s", i.Member.User.Username, fmt.Sprintf("%s/%s", i.ChannelID, i.Message.ID))
 }
 
 func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -204,6 +205,7 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 		log.Printf("failed to send message: %v", err)
 		return
 	}
+	log.Printf("User: %s deleted event %s", i.Member.User.Username, fmt.Sprintf("%s/%s", i.ChannelID, i.Message.ID))
 }
 
 func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
