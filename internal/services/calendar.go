@@ -53,7 +53,7 @@ func (c *CalendarClient) CreateGoogleEvent(event *pkg.Event) error {
 }
 
 func (c *CalendarClient) ListEvents() ([]*calendar.Event, error) {
-	events, err := c.service.Events.List(c.calendarID).TimeMin(time.Now().Format(time.RFC3339)).OrderBy("startTime").Do()
+	events, err := c.service.Events.List(c.calendarID).SingleEvents(true).TimeMin(time.Now().Format(time.RFC3339)).OrderBy("startTime").Do()
 	if err != nil {
 		return nil, err
 	}

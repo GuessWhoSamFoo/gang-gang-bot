@@ -558,3 +558,65 @@ func TestRoleGroup_RemoveFromAllLists(t *testing.T) {
 		})
 	}
 }
+
+func TestRoleGroup_HasUser(t *testing.T) {
+	cases := []struct {
+		name      string
+		user      string
+		roleGroup *RoleGroup
+		expected  bool
+	}{
+		{
+			name: "has user",
+			user: "foo",
+			roleGroup: &RoleGroup{
+				Roles: []*Role{
+					{
+						FieldName: AcceptedField,
+						Users:     []string{"foo"},
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "does not have user",
+			user: "foo",
+			roleGroup: &RoleGroup{
+				Roles: []*Role{
+					{
+						FieldName: AcceptedField,
+						Users:     []string{},
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "user in waitlist",
+			user: "foo",
+			roleGroup: &RoleGroup{
+				Roles: []*Role{
+					{
+						FieldName: AcceptedField,
+						Users:     []string{"baz"},
+					},
+				},
+				Waitlist: map[FieldType]*Role{
+					AcceptedField: {
+						FieldName: WaitlistField,
+						Users:     []string{"foo"},
+					},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.roleGroup.HasUser(tc.user, AcceptedField)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}

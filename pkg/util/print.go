@@ -100,3 +100,12 @@ func GetTimesFromLink(link string) (start, end time.Time, err error) {
 	}
 	return start, end, nil
 }
+
+// PrintEventListItem formats an event time into a human-readable format
+func PrintEventListItem(startTime time.Time, eventName, link string) string {
+	var result string
+	result += fmt.Sprintf("%s ⋅ %s %d\n", startTime.Weekday(), startTime.Month().String(), startTime.Day())
+	relative := fmt.Sprintf("<t:%d:R>", startTime.Unix())
+	result += fmt.Sprintf("> `%s` [%s](%s) %s\n", startTime.Local().Format(time.Kitchen), eventName, link, relative)
+	return result
+}

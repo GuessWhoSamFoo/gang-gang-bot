@@ -232,7 +232,7 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 		return
 	}
 
-	_, channelID, messageID, err := util.GetIDsFromDeleteLink(url)
+	_, channelID, messageID, err := util.GetIDsFromDiscordLink(url)
 	if err != nil {
 		log.Printf("failed to get ID from link: %v", err)
 		return

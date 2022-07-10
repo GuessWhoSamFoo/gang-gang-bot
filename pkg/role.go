@@ -137,3 +137,13 @@ func (rg *RoleGroup) PeekWaitlist(field FieldType) string {
 	}
 	return ""
 }
+
+// HasUser checks if a given role has a user
+func (rg *RoleGroup) HasUser(name string, field FieldType) bool {
+	for _, r := range rg.Roles {
+		if r.FieldName == field && slices.Contains(r.Users, name) {
+			return true
+		}
+	}
+	return false
+}

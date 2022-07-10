@@ -27,8 +27,8 @@ func GetLinkFromDeleteDescription(description string) (string, error) {
 	return result[1], nil
 }
 
-// GetIDsFromDeleteLink gets IDs in the message link from a delete handler
-func GetIDsFromDeleteLink(link string) (guildID string, channelID string, messageID string, err error) {
+// GetIDsFromDiscordLink gets IDs in the message link from a delete handler
+func GetIDsFromDiscordLink(link string) (guildID string, channelID string, messageID string, err error) {
 	u, err := url.Parse(link)
 	if err != nil {
 		return "", "", "", err
@@ -41,6 +41,16 @@ func GetIDsFromDeleteLink(link string) (guildID string, channelID string, messag
 	}
 	l := len(pathSlice)
 	return pathSlice[l-3], pathSlice[l-2], pathSlice[l-1], err
+}
+
+// GetDiscordLinkFromCalendarDescription gets the Discord link from a Google calendar event description
+func GetDiscordLinkFromCalendarDescription(description string) (string, error) {
+	result := strings.Split(description, LineFeed)
+	if len(result) != 2 {
+		return "", fmt.Errorf("unexpected description format")
+	}
+	discordLink := strings.Trim(result[len(result)-1], "\n")
+	return discordLink, nil
 }
 
 // ParseFieldHeadCount extracts the attendees and limits of an event from an embed message field

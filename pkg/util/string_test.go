@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -34,6 +35,75 @@ func TestGetLinkFromDeleteDescription(t *testing.T) {
 			got, err := GetLinkFromDeleteDescription(tc.input)
 			if err == nil && tc.isErr {
 				assert.Error(t, err)
+			}
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestGetIDsFromDiscordLink(t *testing.T) {
+	cases := []struct {
+		name              string
+		input             string
+		expectedGuildID   string
+		expectedChannelID string
+		expectedMessageID string
+		isErr             bool
+	}{
+		{
+			name:              "valid link",
+			input:             "https://discord.com/channels/530946869023604746/530949686962421770/755612707146825839",
+			expectedGuildID:   "530946869023604746",
+			expectedChannelID: "530949686962421770",
+			expectedMessageID: "755612707146825839",
+		},
+		{
+			name:  "invalid link",
+			isErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			guildID, channelID, messageID, err := GetIDsFromDiscordLink(tc.input)
+			if !tc.isErr {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.expectedGuildID, guildID)
+			assert.Equal(t, tc.expectedChannelID, channelID)
+			assert.Equal(t, tc.expectedMessageID, messageID)
+		})
+	}
+}
+
+func TestGetDiscordLinkFromCalendarDescription(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+		isErr    bool
+	}{
+		{
+			name:     "valid description",
+			input:    fmt.Sprintf("%s\n%s\n%s", "my event description", LineFeed, "https://discord.com/channels/530946869023604746/530949686962421770/755612707146825839"),
+			expected: "https://discord.com/channels/530946869023604746/530949686962421770/755612707146825839",
+		},
+		{
+			name:  "empty string",
+			isErr: true,
+		},
+		{
+			name:  "invalid description",
+			input: "missing the special line feed",
+			isErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := GetDiscordLinkFromCalendarDescription(tc.input)
+			if !tc.isErr {
+				assert.NoError(t, err)
 			}
 			assert.Equal(t, tc.expected, got)
 		})

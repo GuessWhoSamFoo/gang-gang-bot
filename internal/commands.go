@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -14,10 +15,10 @@ var (
 			DefaultMemberPermissions: &pkg.EventPermission,
 			DMPermission:             &pkg.DMPermission,
 		},
-		//{
-		//	Name:        "my_events",
-		//	Description: "View a list of upcoming events you've organized or signed up for",
-		//},
+		{
+			Name:        "my_events",
+			Description: "View a list of upcoming events you've organized or signed up for",
+		},
 		//{
 		//	Name:        "edit",
 		//	Description: "Modify an existing event",
@@ -105,10 +106,85 @@ func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.In
 	}
 }
 
-//func ListEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-//	// TODO: Return an ephemeral message of all events one is organizing or signed up for
-//}
-//
+func (sm *StateManager) ListEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if sm == nil {
+		log.Printf("state manager is nil")
+		return
+	}
+	if sm.CalendarClient == nil {
+		log.Println("calendar client is nil")
+		return
+	}
+	if i.Member == nil {
+		log.Println("cannot find user")
+		return
+	}
+	if sm.HasUser(i.Member.User.ID) {
+		pkg.NotifyCommandInProgress(s, i)
+		return
+	}
+
+	sm.AddUser(i.Member.User.ID)
+	defer sm.RemoveUser(i.Member.User.ID)
+
+	events, err := sm.CalendarClient.ListEvents()
+	if err != nil {
+		log.Printf("cannot get events from calendar: %v", err)
+		return
+	}
+
+	var desc string
+	for _, e := range events {
+		link, err := util.GetDiscordLinkFromCalendarDescription(e.Description)
+		if err != nil {
+			log.Printf("failed to get discord link from calendar: %v", err)
+			return
+		}
+		_, channelID, messageID, err := util.GetIDsFromDiscordLink(link)
+		if err != nil {
+			log.Printf("failed to get id: %v", err)
+			return
+		}
+
+		msg, err := s.ChannelMessage(channelID, messageID)
+		if err != nil {
+			log.Printf("failed to get message: %v", err)
+			return
+		}
+
+		event, err := pkg.GetEventFromMessage(msg)
+		if err != nil {
+			log.Printf("failed to convert message: %v", err)
+			return
+		}
+
+		if event.Owner == i.Member.User.Username || event.RoleGroup.HasUser(i.Member.User.Username, pkg.AcceptedField) {
+			desc += util.PrintEventListItem(event.Start, event.Title, link)
+		}
+	}
+
+	if desc == "" {
+		desc = "No events found!"
+	}
+
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "My Events",
+					Color:       pkg.Purple,
+					Description: desc,
+				},
+			},
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Printf("failed to reponsd: %v", err)
+		return
+	}
+}
+
 //func EditEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 //	// TODO: Send a DM with edit message sequence
 //}
