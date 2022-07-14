@@ -22,8 +22,9 @@ func NewStateManager(config *Config) *StateManager {
 		userMap: make(map[string]struct{}),
 	}
 	sm.CommandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"event":     sm.CreateEventHandler,
-		"my_events": sm.ListEventHandler,
+		"event":           sm.CreateEventHandler,
+		"my_events":       sm.ListMyEventsHandler,
+		"upcoming_events": sm.ListUpcomingEventsHandler,
 		//"edit":      EditEventHandler,
 	}
 	sm.ComponentHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){

@@ -19,6 +19,10 @@ var (
 			Name:        "my_events",
 			Description: "View a list of upcoming events you've organized or signed up for",
 		},
+		{
+			Name:        "upcoming_events",
+			Description: "View a list of upcoming events",
+		},
 		//{
 		//	Name:        "edit",
 		//	Description: "Modify an existing event",
@@ -106,7 +110,7 @@ func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.In
 	}
 }
 
-func (sm *StateManager) ListEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (sm *StateManager) ListMyEventsHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if sm == nil {
 		log.Printf("state manager is nil")
 		return
@@ -119,13 +123,6 @@ func (sm *StateManager) ListEventHandler(s *discordgo.Session, i *discordgo.Inte
 		log.Println("cannot find user")
 		return
 	}
-	if sm.HasUser(i.Member.User.ID) {
-		pkg.NotifyCommandInProgress(s, i)
-		return
-	}
-
-	sm.AddUser(i.Member.User.ID)
-	defer sm.RemoveUser(i.Member.User.ID)
 
 	events, err := sm.CalendarClient.ListEvents()
 	if err != nil {
@@ -173,6 +170,70 @@ func (sm *StateManager) ListEventHandler(s *discordgo.Session, i *discordgo.Inte
 			Embeds: []*discordgo.MessageEmbed{
 				{
 					Title:       "My Events",
+					Color:       pkg.Purple,
+					Description: desc,
+				},
+			},
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Printf("failed to reponsd: %v", err)
+		return
+	}
+}
+
+func (sm *StateManager) ListUpcomingEventsHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if sm == nil {
+		log.Printf("state manager is nil")
+		return
+	}
+	if sm.CalendarClient == nil {
+		log.Println("calendar client is nil")
+		return
+	}
+	events, err := sm.CalendarClient.ListEvents()
+	if err != nil {
+		log.Printf("cannot list events from Google calendar")
+		return
+	}
+
+	var desc string
+	for _, e := range events {
+		link, err := util.GetDiscordLinkFromCalendarDescription(e.Description)
+		if err != nil {
+			log.Printf("failed to get discord link from calendar: %v", err)
+			return
+		}
+		_, channelID, messageID, err := util.GetIDsFromDiscordLink(link)
+		if err != nil {
+			log.Printf("failed to get id: %v", err)
+			return
+		}
+
+		msg, err := s.ChannelMessage(channelID, messageID)
+		if err != nil {
+			log.Printf("failed to get message: %v", err)
+			return
+		}
+
+		event, err := pkg.GetEventFromMessage(msg)
+		if err != nil {
+			log.Printf("failed to convert message: %v", err)
+			return
+		}
+		desc += util.PrintEventListItem(event.Start, event.Title, link)
+	}
+
+	if desc == "" {
+		desc = "No events found!"
+	}
+
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Upcoming Events",
 					Color:       pkg.Purple,
 					Description: desc,
 				},

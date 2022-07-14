@@ -656,7 +656,6 @@ func (eb *EventBuilder) waitForInput(timeout time.Duration) (interface{}, error)
 			}
 			return result, nil
 		case <-time.After(timeout):
-			input <- ""
 			if _, err := eb.Session.ChannelMessageSend(eb.Channel.ID, "I'm not sure where you went. We can try this again later."); err != nil {
 				return nil, err
 			}
