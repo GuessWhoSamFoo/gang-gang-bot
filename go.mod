@@ -5,7 +5,7 @@ go 1.18
 
 require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
-	github.com/bwmarrin/discordgo v0.25.1-0.20220619182011-a7f037862343
+	github.com/bwmarrin/discordgo v0.26.1
 	github.com/lithammer/fuzzysearch v1.1.5
 	github.com/stretchr/testify v1.7.0
 	github.com/tj/go-naturaldate v1.3.0
