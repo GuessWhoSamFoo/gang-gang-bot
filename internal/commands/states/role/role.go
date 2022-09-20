@@ -1,4 +1,4 @@
-package pkg
+package role
 
 import (
 	"fmt"
@@ -146,4 +146,13 @@ func (rg *RoleGroup) HasUser(name string, field FieldType) bool {
 		}
 	}
 	return false
+}
+
+func (rg *RoleGroup) SetLimit(field FieldType, limit int) {
+	for _, r := range rg.Roles {
+		if r.FieldName == field {
+			r.Limit = limit
+			return
+		}
+	}
 }

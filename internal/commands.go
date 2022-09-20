@@ -1,6 +1,11 @@
 package internal
 
 import (
+	"context"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
@@ -31,88 +36,67 @@ var (
 )
 
 func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if sm == nil {
-		log.Printf("state manager is nil")
+	if sm.HasUser(i.Member.User.ID) {
+		discord.NotifyCommandInProgress(s, i)
 		return
 	}
-	if sm.CalendarClient == nil {
-		log.Println("calendar client is nil")
-		return
-	}
+	sm.AddUser(i.Member.User.ID)
+	defer sm.RemoveUser(i.Member.User.ID)
 
 	c, err := s.UserChannelCreate(i.Member.User.ID)
 	if err != nil {
 		log.Printf("cannot create channel: %v", err)
 		return
 	}
+	ctx := context.Background()
+	opts := discord.Options{
+		Session:           s,
+		InteractionCreate: i,
+		Channel:           c,
+		CalendarClient:    sm.CalendarClient,
+	}
 
-	eb, err := pkg.NewEventBuilder(s, c, i)
+	f, err := NewDefaultStateFactory(opts).Factory(commands.CreateType)
 	if err != nil {
-		log.Printf("cannot create builder: %v", err)
 		return
 	}
 
-	if sm.HasUser(i.Member.User.ID) {
-		pkg.NotifyCommandInProgress(s, i)
+	if err := f.Event(ctx, states.StartCreate.String()); err != nil {
+		log.Println(err)
 		return
 	}
-	sm.AddUser(i.Member.User.ID)
-	defer sm.RemoveUser(i.Member.User.ID)
-
-	if err := eb.StartCreate(); err != nil {
-		log.Printf("failed to start event create chat: %v", err)
+	if err := f.Event(ctx, states.AddTitle.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := eb.AddTitle(); err != nil {
-		log.Printf("failed to set event title: %v", err)
+	if err := f.Event(ctx, states.AddDescription.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := eb.AddDescription(); err != nil {
-		log.Printf("failed to set event description: %v", err)
+	if err := f.Event(ctx, states.SetAttendeeLimit.String()); err != nil {
 		return
 	}
-
-	if err := eb.SetAttendeeLimit(); err != nil {
-		log.Printf("failed to set attendee limit: %v", err)
+	if err := f.Event(ctx, states.SetDate.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := eb.SetDate(); err != nil {
-		log.Printf("failed to set starting date: %v", err)
+	if err := f.Event(ctx, states.SetLocation.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := eb.SetLocation(); err != nil {
-		log.Printf("failed to set location: %v", err)
+	if err := f.Event(ctx, states.SetDuration.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := eb.SetDuration(); err != nil {
-		log.Printf("failed to set duration: %v", err)
-		return
-	}
-
-	if err := sm.CalendarClient.CreateGoogleEvent(eb.Event); err != nil {
-		log.Printf("failed to add event to calendar: %v", err)
-		return
-	}
-
-	if err := eb.CreateEvent(); err != nil {
-		log.Printf("failed to create event: %v", err)
-		return
-	}
-
-	if err := sm.CalendarClient.UpdateEvent(eb.Event); err != nil {
-		log.Printf("failed to add discord link to calendar: %v", err)
+	if err := f.Event(ctx, states.CreateEvent.String()); err != nil {
+		log.Println(err)
 		return
 	}
 }
 
 func (sm *StateManager) ListMyEventsHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if sm == nil {
-		log.Printf("state manager is nil")
+		log.Printf("commands manager is nil")
 		return
 	}
 	if sm.CalendarClient == nil {
@@ -149,13 +133,13 @@ func (sm *StateManager) ListMyEventsHandler(s *discordgo.Session, i *discordgo.I
 			return
 		}
 
-		event, err := pkg.GetEventFromMessage(msg)
+		event, err := discord.GetEventFromMessage(msg)
 		if err != nil {
 			log.Printf("failed to convert message: %v", err)
 			return
 		}
 
-		if event.Owner == i.Member.User.Username || event.RoleGroup.HasUser(i.Member.User.Username, pkg.AcceptedField) {
+		if event.Owner == i.Member.User.Username || event.RoleGroup.HasUser(i.Member.User.Username, role.AcceptedField) {
 			desc += util.PrintEventListItem(event.Start, event.Title, link)
 		}
 	}
@@ -170,7 +154,7 @@ func (sm *StateManager) ListMyEventsHandler(s *discordgo.Session, i *discordgo.I
 			Embeds: []*discordgo.MessageEmbed{
 				{
 					Title:       "My Events",
-					Color:       pkg.Purple,
+					Color:       discord.Purple,
 					Description: desc,
 				},
 			},
@@ -184,7 +168,7 @@ func (sm *StateManager) ListMyEventsHandler(s *discordgo.Session, i *discordgo.I
 
 func (sm *StateManager) ListUpcomingEventsHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if sm == nil {
-		log.Printf("state manager is nil")
+		log.Printf("commands manager is nil")
 		return
 	}
 	if sm.CalendarClient == nil {
@@ -216,7 +200,7 @@ func (sm *StateManager) ListUpcomingEventsHandler(s *discordgo.Session, i *disco
 			return
 		}
 
-		event, err := pkg.GetEventFromMessage(msg)
+		event, err := discord.GetEventFromMessage(msg)
 		if err != nil {
 			log.Printf("failed to convert message: %v", err)
 			return
@@ -234,7 +218,7 @@ func (sm *StateManager) ListUpcomingEventsHandler(s *discordgo.Session, i *disco
 			Embeds: []*discordgo.MessageEmbed{
 				{
 					Title:       "Upcoming Events",
-					Color:       pkg.Purple,
+					Color:       discord.Purple,
 					Description: desc,
 				},
 			},

@@ -1,6 +1,7 @@
-package pkg
+package discord
 
 import (
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
@@ -24,11 +25,11 @@ func Test_getEventFromMessage(t *testing.T) {
 						Color:       1234,
 						Fields: []*discordgo.MessageEmbedField{
 							{
-								Name:  acceptedBase,
+								Name:  AcceptedBase,
 								Value: "-",
 							},
 							{
-								Name:  string(WaitlistField),
+								Name:  string(role.WaitlistField),
 								Value: "> test",
 							},
 							{
@@ -46,18 +47,18 @@ func Test_getEventFromMessage(t *testing.T) {
 			expected: &Event{
 				Title:       "title",
 				Description: "desc",
-				RoleGroup: &RoleGroup{
-					Roles: []*Role{
+				RoleGroup: &role.RoleGroup{
+					Roles: []*role.Role{
 						{
-							Icon:      AcceptedIcon,
-							FieldName: AcceptedField,
+							Icon:      role.AcceptedIcon,
+							FieldName: role.AcceptedField,
 							Users:     []string{},
 						},
 					},
-					Waitlist: map[FieldType]*Role{
-						AcceptedField: {
+					Waitlist: map[role.FieldType]*role.Role{
+						role.AcceptedField: {
 							Icon:      "",
-							FieldName: WaitlistField,
+							FieldName: role.WaitlistField,
 							Users:     []string{"test"},
 							Count:     1,
 						},
@@ -80,8 +81,8 @@ func Test_getEventFromMessage(t *testing.T) {
 }
 
 func Test_convertEventToMessageEmbed(t *testing.T) {
-	rg := NewDefaultRoleGroup()
-	err := rg.ToggleRole(AcceptedField, "user")
+	rg := role.NewDefaultRoleGroup()
+	err := rg.ToggleRole(role.AcceptedField, "user")
 	assert.NoError(t, err)
 	cases := []struct {
 		name     string
@@ -117,17 +118,17 @@ func Test_convertEventToMessageEmbed(t *testing.T) {
 						Value: util.PrintGoogleCalendarEventLink("MnZwYWUzNDdrMmE3MGdiaG5tZ212ZTlmbGwgczhsc3I3b2hicWk1dTUyYjg5dm12bXExYWtAZw"),
 					},
 					{
-						Name:   acceptedBase + " (1)",
+						Name:   AcceptedBase + " (1)",
 						Value:  "> user",
 						Inline: true,
 					},
 					{
-						Name:   declinedBase,
+						Name:   DeclinedBase,
 						Value:  "-",
 						Inline: true,
 					},
 					{
-						Name:   tentativeBase,
+						Name:   TentativeBase,
 						Value:  "-",
 						Inline: true,
 					},
@@ -169,10 +170,6 @@ func TestEvent_SetDuration(t *testing.T) {
 			expected: now.Add(time.Minute * 90),
 		},
 		{
-			input: "1hr 30 minutes",
-			isErr: true,
-		},
-		{
 			input:    "invalid",
 			expected: now,
 		},
@@ -180,6 +177,10 @@ func TestEvent_SetDuration(t *testing.T) {
 		//{
 		//	input:    "1h30m",
 		//	expected: now.Add(time.Minute * 90),
+		//},
+		//{
+		//	input: "1hr 30 minutes",
+		//	isErr: true,
 		//},
 	}
 

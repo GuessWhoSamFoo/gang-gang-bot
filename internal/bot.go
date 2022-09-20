@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/services"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
@@ -32,7 +33,7 @@ func (b *Bot) Start() error {
 	}
 
 	var err error
-	c, err := services.NewCalendarClient(ctx, b.Config.Google.CalendarID, b.Config.Google.Credentials)
+	c, err := discord.NewCalendarClient(ctx, b.Config.Google.CalendarID, b.Config.Google.Credentials)
 	if err != nil {
 		return err
 	}

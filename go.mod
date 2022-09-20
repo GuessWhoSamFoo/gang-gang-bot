@@ -4,8 +4,10 @@ module github.com/GuessWhoSamFoo/gang-gang-bot
 go 1.18
 
 require (
+	github.com/GuessWhoSamFoo/fsm v0.4.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/bwmarrin/discordgo v0.26.1
+	github.com/ewohltman/discordgo-mock v0.0.7
 	github.com/lithammer/fuzzysearch v1.1.5
 	github.com/stretchr/testify v1.7.0
 	github.com/tj/go-naturaldate v1.3.0
@@ -22,6 +24,7 @@ require (
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect

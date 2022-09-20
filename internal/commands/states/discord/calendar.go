@@ -1,9 +1,8 @@
-package services
+package discord
 
 import (
 	"context"
 	"fmt"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
@@ -39,7 +38,7 @@ func NewCalendarClient(ctx context.Context, calendarID string, credentials []byt
 	}, nil
 }
 
-func (c *CalendarClient) CreateGoogleEvent(event *pkg.Event) error {
+func (c *CalendarClient) CreateGoogleEvent(event *Event) error {
 	if event == nil {
 		return fmt.Errorf("event is nil")
 	}
@@ -60,7 +59,7 @@ func (c *CalendarClient) ListEvents() ([]*calendar.Event, error) {
 	return events.Items, nil
 }
 
-func (c *CalendarClient) UpdateEvent(event *pkg.Event) error {
+func (c *CalendarClient) UpdateEvent(event *Event) error {
 	if event == nil {
 		return fmt.Errorf("event is nil")
 	}
@@ -76,7 +75,7 @@ func (c *CalendarClient) UpdateEvent(event *pkg.Event) error {
 	return nil
 }
 
-func (c *CalendarClient) DeleteEvent(event *pkg.Event) error {
+func (c *CalendarClient) DeleteEvent(event *Event) error {
 	if event == nil {
 		return fmt.Errorf("event is nil")
 	}
@@ -91,7 +90,7 @@ func (c *CalendarClient) DeleteEvent(event *pkg.Event) error {
 }
 
 // toGoogleEvent converts the event type to a calendar event
-func toGoogleEvent(event *pkg.Event) *calendar.Event {
+func toGoogleEvent(event *Event) *calendar.Event {
 	if event == nil {
 		return nil
 	}

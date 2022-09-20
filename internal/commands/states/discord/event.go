@@ -1,7 +1,9 @@
-package pkg
+package discord
 
 import (
 	"fmt"
+	"github.com/GuessWhoSamFoo/fsm"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
 	"github.com/tj/go-naturaldate"
@@ -10,10 +12,34 @@ import (
 	"time"
 )
 
+type MetadataKey string
+
+const (
+	Action      MetadataKey = "action"
+	GuildID     MetadataKey = "guildID"
+	Title       MetadataKey = "title"
+	Description MetadataKey = "description"
+	Attendee    MetadataKey = "attendee"
+	Location    MetadataKey = "location"
+	StartTime   MetadataKey = "start"
+	Duration    MetadataKey = "duration"
+	Owner       MetadataKey = "owner"
+	Color       MetadataKey = "color"
+	ID          MetadataKey = "id"
+	MenuOption  MetadataKey = "menuOption"
+
+	EventObject MetadataKey = "eventObject"
+	Username    MetadataKey = "username"
+)
+
+func (m MetadataKey) String() string {
+	return string(m)
+}
+
 var (
-	acceptedBase  = fmt.Sprintf("%s %s", AcceptedIcon, AcceptedField)
-	declinedBase  = fmt.Sprintf("%s %s", DeclinedIcon, DeclinedField)
-	tentativeBase = fmt.Sprintf("%s %s", TentativeIcon, TentativeField)
+	AcceptedBase  = fmt.Sprintf("%s %s", role.AcceptedIcon, role.AcceptedField)
+	DeclinedBase  = fmt.Sprintf("%s %s", role.DeclinedIcon, role.DeclinedField)
+	TentativeBase = fmt.Sprintf("%s %s", role.TentativeIcon, role.TentativeField)
 )
 
 // Event is an internal representation of a formatted Discord Embed Message
@@ -23,20 +49,11 @@ type Event struct {
 	Location    string
 	Start       time.Time
 	End         time.Time
-	RoleGroup   *RoleGroup
+	RoleGroup   *role.RoleGroup
 	Owner       string
 	Color       int
 	ID          string // base64 encoded eventID + calendarID
 	DiscordLink string
-	// TODO: image, frequency, localization
-}
-
-// NewEvent creates a new event
-func NewEvent() *Event {
-	return &Event{
-		Start:     time.Now(),
-		RoleGroup: NewDefaultRoleGroup(),
-	}
 }
 
 func (e *Event) AddTitle(title string) {
@@ -47,7 +64,7 @@ func (e *Event) AddDescription(description string) {
 	e.Description = description
 }
 
-func (e *Event) SetMaximumAttendees(field FieldType, number int) {
+func (e *Event) SetMaximumAttendees(field role.FieldType, number int) {
 	for _, r := range e.RoleGroup.Roles {
 		if r.FieldName == field {
 			r.Limit = number
@@ -87,11 +104,11 @@ func (e *Event) ToggleAccept(s *discordgo.Session, i *discordgo.InteractionCreat
 	if e.RoleGroup == nil {
 		return fmt.Errorf("missing role group")
 	}
-	prev := e.RoleGroup.PeekWaitlist(AcceptedField)
-	if err := e.RoleGroup.ToggleRole(AcceptedField, name); err != nil {
+	prev := e.RoleGroup.PeekWaitlist(role.AcceptedField)
+	if err := e.RoleGroup.ToggleRole(role.AcceptedField, name); err != nil {
 		return err
 	}
-	if prev != "" && prev != e.RoleGroup.PeekWaitlist(AcceptedField) {
+	if prev != "" && prev != e.RoleGroup.PeekWaitlist(role.AcceptedField) {
 		if err := e.NotifyUserOffWaitlist(s, i.Interaction, prev); err != nil {
 			return err
 		}
@@ -103,11 +120,11 @@ func (e *Event) ToggleDecline(s *discordgo.Session, i *discordgo.InteractionCrea
 	if e.RoleGroup == nil {
 		return fmt.Errorf("missing role group")
 	}
-	prev := e.RoleGroup.PeekWaitlist(AcceptedField)
-	if err := e.RoleGroup.ToggleRole(DeclinedField, name); err != nil {
+	prev := e.RoleGroup.PeekWaitlist(role.AcceptedField)
+	if err := e.RoleGroup.ToggleRole(role.DeclinedField, name); err != nil {
 		return err
 	}
-	if prev != "" && prev != e.RoleGroup.PeekWaitlist(AcceptedField) {
+	if prev != "" && prev != e.RoleGroup.PeekWaitlist(role.AcceptedField) {
 		if err := e.NotifyUserOffWaitlist(s, i.Interaction, prev); err != nil {
 			return err
 		}
@@ -119,11 +136,11 @@ func (e *Event) ToggleTentative(s *discordgo.Session, i *discordgo.InteractionCr
 	if e.RoleGroup == nil {
 		return fmt.Errorf("missing role group")
 	}
-	prev := e.RoleGroup.PeekWaitlist(AcceptedField)
-	if err := e.RoleGroup.ToggleRole(TentativeField, name); err != nil {
+	prev := e.RoleGroup.PeekWaitlist(role.AcceptedField)
+	if err := e.RoleGroup.ToggleRole(role.TentativeField, name); err != nil {
 		return err
 	}
-	if prev != "" && prev != e.RoleGroup.PeekWaitlist(AcceptedField) {
+	if prev != "" && prev != e.RoleGroup.PeekWaitlist(role.AcceptedField) {
 		if err := e.NotifyUserOffWaitlist(s, i.Interaction, prev); err != nil {
 			return err
 		}
@@ -135,11 +152,11 @@ func (e *Event) RemoveFromAllLists(s *discordgo.Session, i *discordgo.Interactio
 	if e.RoleGroup == nil {
 		return fmt.Errorf("missing role group")
 	}
-	prev := e.RoleGroup.PeekWaitlist(AcceptedField)
+	prev := e.RoleGroup.PeekWaitlist(role.AcceptedField)
 	if err := e.RoleGroup.RemoveFromAllLists(name); err != nil {
 		return err
 	}
-	if prev != "" && prev != e.RoleGroup.PeekWaitlist(AcceptedField) {
+	if prev != "" && prev != e.RoleGroup.PeekWaitlist(role.AcceptedField) {
 		if err := e.NotifyUserOffWaitlist(s, i.Interaction, prev); err != nil {
 			return err
 		}
@@ -190,6 +207,36 @@ func NotifyCommandInProgress(s *discordgo.Session, i *discordgo.InteractionCreat
 	}
 }
 
+func FromFSMToEvent(f *fsm.FSM) (*Event, error) {
+	e := &Event{}
+
+	if title, found := f.Metadata(Title.String()); found {
+		e.Title = fmt.Sprintf("%s", title)
+	}
+	if description, found := f.Metadata(Description.String()); found {
+		e.Description = fmt.Sprintf("%s", description)
+	}
+	if location, found := f.Metadata(Location.String()); found {
+		e.Location = fmt.Sprintf("%s", location)
+	}
+	if start, found := f.Metadata(StartTime.String()); found {
+		e.Start = start.(time.Time)
+	}
+	if end, found := f.Metadata(Duration.String()); found {
+		e.End = end.(time.Time)
+	}
+	if rg, found := f.Metadata(Attendee.String()); found {
+		e.RoleGroup = rg.(*role.RoleGroup) // Panics when attendee is none?
+	}
+	if owner, found := f.Metadata(Owner.String()); found {
+		e.Owner = fmt.Sprintf("%s", owner)
+	}
+	if color, found := f.Metadata(Color.String()); found {
+		e.Color = color.(int)
+	}
+	return e, nil
+}
+
 // GetEventFromMessage converts a Discord message into an event type
 func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 	if len(msg.Embeds) != 1 {
@@ -200,12 +247,12 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 	e.Title = embed.Title
 	e.Description = embed.Description
 	e.Color = embed.Color
-	e.RoleGroup = &RoleGroup{
-		Roles: []*Role{},
-		Waitlist: map[FieldType]*Role{
-			AcceptedField: {
+	e.RoleGroup = &role.RoleGroup{
+		Roles: []*role.Role{},
+		Waitlist: map[role.FieldType]*role.Role{
+			role.AcceptedField: {
 				Icon:      "",
-				FieldName: WaitlistField,
+				FieldName: role.WaitlistField,
 				Users:     []string{},
 			},
 		},
@@ -213,32 +260,32 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 	var err error
 	for _, f := range embed.Fields {
 		switch {
-		case strings.Contains(f.Name, acceptedBase):
+		case strings.Contains(f.Name, AcceptedBase):
 			_, limit, err := util.ParseFieldHeadCount(f.Name)
 			if err != nil {
 				return nil, err
 			}
 			users := util.GetUsersFromValues(f.Value)
-			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &Role{
-				Icon:      AcceptedIcon,
-				FieldName: AcceptedField,
+			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &role.Role{
+				Icon:      role.AcceptedIcon,
+				FieldName: role.AcceptedField,
 				Users:     users,
 				Count:     len(users),
 				Limit:     limit,
 			})
-		case strings.Contains(f.Name, declinedBase):
+		case strings.Contains(f.Name, DeclinedBase):
 			users := util.GetUsersFromValues(f.Value)
-			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &Role{
-				Icon:      DeclinedIcon,
-				FieldName: DeclinedField,
+			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &role.Role{
+				Icon:      role.DeclinedIcon,
+				FieldName: role.DeclinedField,
 				Users:     users,
 				Count:     len(users),
 			})
-		case strings.Contains(f.Name, tentativeBase):
+		case strings.Contains(f.Name, TentativeBase):
 			users := util.GetUsersFromValues(f.Value)
-			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &Role{
-				Icon:      TentativeIcon,
-				FieldName: TentativeField,
+			e.RoleGroup.Roles = append(e.RoleGroup.Roles, &role.Role{
+				Icon:      role.TentativeIcon,
+				FieldName: role.TentativeField,
 				Users:     users,
 				Count:     len(users),
 			})
@@ -254,11 +301,11 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 			}
 		case f.Name == "Location":
 			e.Location = f.Value
-		case f.Name == string(WaitlistField):
+		case f.Name == string(role.WaitlistField):
 			users := util.GetUsersFromValues(f.Value)
-			e.RoleGroup.Waitlist[AcceptedField] = &Role{
+			e.RoleGroup.Waitlist[role.AcceptedField] = &role.Role{
 				Icon:      "",
-				FieldName: WaitlistField,
+				FieldName: role.WaitlistField,
 				Users:     users,
 				Count:     len(users),
 			}
@@ -278,6 +325,7 @@ func GetEventFromMessage(msg *discordgo.Message) (*Event, error) {
 	return e, nil
 }
 
+// ConvertEventToMessageEmbed converts an internal Event into a Discord Embed message
 func ConvertEventToMessageEmbed(event *Event) (*discordgo.MessageEmbed, error) {
 	msg := &discordgo.MessageEmbed{}
 	fields := []*discordgo.MessageEmbedField{
@@ -306,23 +354,23 @@ func ConvertEventToMessageEmbed(event *Event) (*discordgo.MessageEmbed, error) {
 		})
 	}
 
-	for _, role := range event.RoleGroup.Roles {
-		name := fmt.Sprintf("%s %s", role.Icon, role.FieldName)
-		if role.Limit == 0 && role.Count > 0 {
-			name = fmt.Sprintf("%s %s (%d)", role.Icon, role.FieldName, role.Count)
+	for _, r := range event.RoleGroup.Roles {
+		name := fmt.Sprintf("%s %s", r.Icon, r.FieldName)
+		if r.Limit == 0 && r.Count > 0 {
+			name = fmt.Sprintf("%s %s (%d)", r.Icon, r.FieldName, r.Count)
 		}
-		if role.Limit > 0 {
-			name = fmt.Sprintf("%s %s (%d/%d)", role.Icon, role.FieldName, role.Count, role.Limit)
+		if r.Limit > 0 {
+			name = fmt.Sprintf("%s %s (%d/%d)", r.Icon, r.FieldName, r.Count, r.Limit)
 		}
 		fields = append(fields, &discordgo.MessageEmbedField{
 			Name:   name,
-			Value:  util.NameListToValues(role.Users),
+			Value:  util.NameListToValues(r.Users),
 			Inline: true,
 		})
 	}
 
-	for _, role := range event.RoleGroup.Roles {
-		if wl, ok := event.RoleGroup.Waitlist[role.FieldName]; ok && wl.Count > 0 {
+	for _, r := range event.RoleGroup.Roles {
+		if wl, ok := event.RoleGroup.Waitlist[r.FieldName]; ok && wl.Count > 0 {
 			fields = append(fields, &discordgo.MessageEmbedField{
 				Name:  string(wl.FieldName),
 				Value: util.NameListToValues(wl.Users),

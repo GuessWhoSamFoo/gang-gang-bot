@@ -1,0 +1,28 @@
+digraph fsm {
+    "addDescription" -> "continueEdit" [ label = "continueEdit" ];
+    "addTitle" -> "continueEdit" [ label = "continueEdit" ];
+    "continueEdit" -> "processEdit" [ label = "processEdit" ];
+    "continueEdit" -> "startEdit" [ label = "startEdit" ];
+    "idle" -> "startEdit" [ label = "startEdit" ];
+    "modifyEvent" -> "addDescription" [ label = "addDescription" ];
+    "modifyEvent" -> "addTitle" [ label = "addTitle" ];
+    "modifyEvent" -> "setDate" [ label = "setDate" ];
+    "modifyEvent" -> "setLocation" [ label = "setLocation" ];
+    "setDate" -> "continueEdit" [ label = "continueEdit" ];
+    "setLocation" -> "continueEdit" [ label = "continueEdit" ];
+    "startEdit" -> "addResponse" [ label = "addResponse" ];
+    "startEdit" -> "modifyEvent" [ label = "modifyEvent" ];
+    "startEdit" -> "removeResponse" [ label = "removeResponse" ];
+
+    "addDescription";
+    "addResponse";
+    "addTitle";
+    "continueEdit";
+    "idle";
+    "modifyEvent";
+    "processEdit";
+    "removeResponse";
+    "setDate";
+    "setLocation";
+    "startEdit";
+}

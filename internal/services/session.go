@@ -15,6 +15,6 @@ func NewDiscordSession(token string) (*discordgo.Session, error) {
 	return session, nil
 }
 
-func ReadyEvent(s *discordgo.Session, m *discordgo.Ready) {
+func ReadyEvent(_ *discordgo.Session, _ *discordgo.Ready) {
 	log.Println("Discord session is up")
 }

@@ -1,8 +1,11 @@
 package internal
 
 import (
+	"context"
 	"fmt"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
 	"log"
@@ -14,7 +17,7 @@ func (sm *StateManager) AcceptHandler(s *discordgo.Session, i *discordgo.Interac
 	}); err != nil {
 		log.Println(err)
 	}
-	e, err := pkg.GetEventFromMessage(i.Message)
+	e, err := discord.GetEventFromMessage(i.Message)
 	if err != nil {
 		log.Printf("failed to get event: %v", err)
 		return
@@ -25,7 +28,7 @@ func (sm *StateManager) AcceptHandler(s *discordgo.Session, i *discordgo.Interac
 		return
 	}
 
-	embed, err := pkg.ConvertEventToMessageEmbed(e)
+	embed, err := discord.ConvertEventToMessageEmbed(e)
 	if err != nil {
 		log.Printf("failed to convert event: %v", err)
 		return
@@ -45,7 +48,7 @@ func (sm *StateManager) DeclineHandler(s *discordgo.Session, i *discordgo.Intera
 	}); err != nil {
 		log.Println(err)
 	}
-	e, err := pkg.GetEventFromMessage(i.Message)
+	e, err := discord.GetEventFromMessage(i.Message)
 	if err != nil {
 		log.Printf("failed to get event: %v", err)
 		return
@@ -55,7 +58,7 @@ func (sm *StateManager) DeclineHandler(s *discordgo.Session, i *discordgo.Intera
 		return
 	}
 
-	embed, err := pkg.ConvertEventToMessageEmbed(e)
+	embed, err := discord.ConvertEventToMessageEmbed(e)
 	if err != nil {
 		log.Printf("failed to convert event: %v", err)
 		return
@@ -75,7 +78,7 @@ func (sm *StateManager) TentativeHandler(s *discordgo.Session, i *discordgo.Inte
 	}); err != nil {
 		log.Println(err)
 	}
-	e, err := pkg.GetEventFromMessage(i.Message)
+	e, err := discord.GetEventFromMessage(i.Message)
 	if err != nil {
 		log.Printf("failed to get event: %v", err)
 		return
@@ -86,7 +89,7 @@ func (sm *StateManager) TentativeHandler(s *discordgo.Session, i *discordgo.Inte
 		return
 	}
 
-	embed, err := pkg.ConvertEventToMessageEmbed(e)
+	embed, err := discord.ConvertEventToMessageEmbed(e)
 	if err != nil {
 		log.Printf("failed to convert event: %v", err)
 		return
@@ -120,30 +123,30 @@ func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.Interacti
 	}
 
 	if sm.ActiveMap.HasUser(i.Member.User.ID) {
-		pkg.NotifyCommandInProgress(s, i)
+		discord.NotifyCommandInProgress(s, i)
 		return
 	}
 	sm.AddUser(i.Member.User.ID)
 	defer sm.RemoveUser(i.Member.User.ID)
+	ctx := context.Background()
+	opts := discord.Options{
+		Session:           s,
+		InteractionCreate: i,
+		Channel:           c,
+		CalendarClient:    sm.CalendarClient,
+	}
 
-	eb, err := pkg.NewEventBuilder(s, c, i)
+	f, err := NewDefaultStateFactory(opts).Factory(commands.EditType)
 	if err != nil {
-		log.Printf("cannot creater builder: %v", err)
 		return
 	}
 
-	if err := eb.StartEdit(); err != nil {
-		log.Printf("failed to edit event: %v", err)
+	if err = f.Event(ctx, states.StartEdit.String()); err != nil {
+		log.Println(err)
 		return
 	}
-
-	if err := sm.CalendarClient.UpdateEvent(eb.Event); err != nil {
-		log.Printf("failed to update calendar: %v", err)
-		return
-	}
-
-	if err := eb.ProcessEdit(); err != nil {
-		log.Printf("failed to confirm edit: %v", err)
+	if err = f.Event(ctx, states.ProcessEdit.String()); err != nil {
+		log.Println(err)
 		return
 	}
 	log.Printf("User: %s edited event %s", i.Member.User.Username, fmt.Sprintf("%s/%s", i.ChannelID, i.Message.ID))
@@ -152,7 +155,7 @@ func (sm *StateManager) EditHandler(s *discordgo.Session, i *discordgo.Interacti
 func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	// TODO: Check server permissions before delete
 	if sm == nil || sm.CalendarClient == nil {
-		log.Printf("cannot find state manager email client")
+		log.Printf("cannot find commands manager email client")
 		return
 	}
 
@@ -168,13 +171,13 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 		return
 	}
 
-	e, err := pkg.GetEventFromMessage(i.Message)
+	e, err := discord.GetEventFromMessage(i.Message)
 	if err != nil {
 		log.Printf("failed to get event: %v", err)
 		return
 	}
 	if i.Member.User.Username != e.Owner && i.Interaction.Member.Permissions&discordgo.PermissionManageEvents == 0 {
-		if _, err := s.ChannelMessageSendEmbed(c.ID, pkg.DeleteInsufficientPermissionMessage); err != nil {
+		if _, err := s.ChannelMessageSendEmbed(c.ID, discord.DeleteInsufficientPermissionMessage); err != nil {
 			log.Printf("failed to send message: %v", err)
 			return
 		}
@@ -187,7 +190,7 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 			{
 				Title:       "Confirm event deletion",
 				Description: fmt.Sprintf("[%s](https://discord.com/channels/%s/%s/%s)", e.Title, i.GuildID, i.ChannelID, i.Message.ID),
-				Color:       pkg.Purple,
+				Color:       discord.Purple,
 			},
 		},
 		Components: []discordgo.MessageComponent{
@@ -210,7 +213,7 @@ func (sm *StateManager) DeleteHandler(s *discordgo.Session, i *discordgo.Interac
 
 func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if sm == nil || sm.CalendarClient == nil {
-		log.Printf("cannot find state manager email client")
+		log.Printf("cannot find commands manager email client")
 		return
 	}
 
@@ -220,7 +223,7 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 		log.Println(err)
 	}
 
-	e, err := pkg.GetEventFromMessage(i.Message)
+	e, err := discord.GetEventFromMessage(i.Message)
 	if err != nil {
 		log.Printf("failed to parse event from interaction: %v", err)
 		return
@@ -242,7 +245,7 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 	if err != nil {
 		return
 	}
-	cEvent, err := pkg.GetEventFromMessage(msg)
+	cEvent, err := discord.GetEventFromMessage(msg)
 	if err != nil {
 		return
 	}
@@ -261,7 +264,7 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Title: "Event deleted",
-				Color: pkg.Purple,
+				Color: discord.Purple,
 			},
 		},
 		ID:         i.Message.ID,

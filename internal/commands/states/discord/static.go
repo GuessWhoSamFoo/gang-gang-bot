@@ -1,6 +1,13 @@
-package pkg
+package discord
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"fmt"
+	"github.com/bwmarrin/discordgo"
+)
+
+var (
+	Purple = 10181046
+)
 
 // Discord Button Components
 var (
@@ -33,24 +40,24 @@ var (
 
 // Discord Static Responses
 var (
-	cancelText                = "To exit, type 'cancel'"
-	invalidEventLimitText     = "Entry must be between 1 and 250 (or `None` for no limit). Try again:"
-	invalidEntryText          = "Invalid entry. Please select a number from the list above."
-	invalidStartTimeText      = "Invalid start time. Try again:"
-	invalidEventTimeText      = "Event start time cannot be in the past. Try again:"
-	invalidDurationText       = "That's not a valid duration. Try again:"
-	invalidRemoveResponseText = "Invalid selection. Enter the number(s) of the desired option(s), separated by spaces. \n\nFor example: `1 3 5`"
-	foundMultipleText         = "We've found more than one user for the search term. Try something more specific:"
-	foundNoneText             = "We couldn't find a user with that name. Try again:"
-	userSignedUpText          = "That user is already signed up for this event."
-	optionText                = "Enter a number to select an option"
+	CancelText                = "To exit, type 'cancel'"
+	InvalidEventLimitText     = "Entry must be between 1 and 250 (or `None` for no limit). Try again:"
+	InvalidEntryText          = "Invalid entry. Please select a number from the list above."
+	InvalidStartTimeText      = "Invalid start time. Try again:"
+	InvalidEventTimeText      = "Event start time cannot be in the past. Try again:"
+	InvalidDurationText       = "That's not a valid duration. Try again:"
+	InvalidRemoveResponseText = "Invalid selection. Enter the number(s) of the desired option(s), separated by spaces. \n\nFor example: `1 3 5`"
+	FoundMultipleText         = "We've found more than one user for the search term. Try something more specific:"
+	// FoundNoneText             = "We couldn't find a user with that name. Try again:"
+	UserSignedUpText = "That user is already signed up for this event."
+	OptionText       = "Enter a number to select an option"
 
 	EnterTitleMessage = discordgo.MessageEmbed{
 		Title:       "Enter the event title",
 		Color:       Purple,
 		Description: "Up to 200 characters are permitted",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 	EnterDescriptionMessage = discordgo.MessageEmbed{
@@ -58,7 +65,7 @@ var (
 		Color:       Purple,
 		Description: "Type `None` for no description. Up to 1600 characters are permitted",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -67,7 +74,7 @@ var (
 		Color:       Purple,
 		Description: "Type `None` for no limit. Up to 250 attendees are permitted",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -78,7 +85,7 @@ var (
 		// Description: "> Friday at 9pm\n> Tomorrow at 18:00\n> Now\n> In 1 hour\n> YYYY-MM-DD 7:00 PM",
 		Description: "> tomorrow at 10:15am\n> now\n> YYYY-MM-DD 7:00 PM",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -87,7 +94,7 @@ var (
 		Color:       Purple,
 		Description: "Type `None` for no duration.\n> 2 hours\n> 45 minutes\n> 1 hour and 30 minutes",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -95,7 +102,7 @@ var (
 		Title: "Where does this event take place?",
 		Color: Purple,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -110,7 +117,7 @@ var (
 		Color:       Purple,
 		Description: "**1** Modify the event\n**2** Remove responses\n**3** Add a response",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: optionText + "\n" + cancelText,
+			Text: OptionText + "\n" + CancelText,
 		},
 	}
 
@@ -119,7 +126,7 @@ var (
 		Description: "An exact match isn't needed. A few characters of their name will suffice!",
 		Color:       Purple,
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: cancelText,
+			Text: CancelText,
 		},
 	}
 
@@ -140,3 +147,19 @@ var (
 		Color:       Purple,
 	}
 )
+
+func CreateEventMessage(guildID, channelID string) *discordgo.InteractionResponse {
+	return &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       "Let's create an event",
+					Color:       Purple,
+					Description: fmt.Sprintf("I've sent you a [direct message](https://discordapp.com/channels/%s/%s) with next steps.", guildID, channelID),
+				},
+			},
+			Flags: discordgo.MessageFlagsEphemeral,
+		},
+	}
+}

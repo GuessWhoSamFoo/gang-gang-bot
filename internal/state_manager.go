@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/services"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/bwmarrin/discordgo"
 	"sync"
 )
@@ -10,7 +10,7 @@ type StateManager struct {
 	ActiveMap
 	CommandHandlers   map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
 	ComponentHandlers map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate)
-	CalendarClient    *services.CalendarClient
+	CalendarClient    *discord.CalendarClient
 	Config            *Config
 }
 
