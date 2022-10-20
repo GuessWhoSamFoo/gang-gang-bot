@@ -33,7 +33,7 @@ func (c *CreateEventState) OnState(_ context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err := c.Options.CreateGoogleEvent(event); err != nil {
+	if err = c.Options.CreateGoogleEvent(event); err != nil {
 		e.Err = err
 		return
 	}
@@ -110,7 +110,7 @@ func (c *CreateEventState) OnState(_ context.Context, e *fsm.Event) {
 	}
 
 	event.DiscordLink = fmt.Sprintf("https://discord.com/channels/%s/%s/%s", c.Options.InteractionCreate.GuildID, c.Options.InteractionCreate.Interaction.ChannelID, msg.ID)
-	_, err = c.Options.Session.ChannelMessageSendEmbed(c.Options.Channel.ID, &discordgo.MessageEmbed{
+	_, err = c.Session.ChannelMessageSendEmbed(c.Channel.ID, &discordgo.MessageEmbed{
 		Title:       "Event has been created",
 		Color:       discord.Purple,
 		Description: fmt.Sprintf("[Click here to view the event](%s)", event.DiscordLink),
@@ -120,7 +120,26 @@ func (c *CreateEventState) OnState(_ context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = c.Options.UpdateEvent(event); err != nil {
+	if err = c.UpdateEvent(event); err != nil {
+		e.Err = err
+		return
+	}
+
+	guildEvent := &discordgo.GuildScheduledEventParams{
+		Name:               event.Title,
+		Description:        event.DiscordLink,
+		ScheduledStartTime: &event.Start,
+		ScheduledEndTime:   &event.End,
+		PrivacyLevel:       discordgo.GuildScheduledEventPrivacyLevelGuildOnly,
+		EntityType:         discordgo.GuildScheduledEventEntityTypeExternal,
+		EntityMetadata: &discordgo.GuildScheduledEventEntityMetadata{
+			Location: event.Location,
+		},
+		Status: 1,
+	}
+
+	_, err = c.Session.GuildScheduledEventCreate(c.Options.InteractionCreate.GuildID, guildEvent)
+	if err != nil {
 		e.Err = err
 		return
 	}

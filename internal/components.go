@@ -255,7 +255,7 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 		return
 	}
 
-	if err := s.ChannelMessageDelete(channelID, messageID); err != nil {
+	if err = s.ChannelMessageDelete(channelID, messageID); err != nil {
 		log.Printf("failed to delete message: %v", err)
 		return
 	}
@@ -273,5 +273,21 @@ func (sm *StateManager) ConfirmDeleteHandler(s *discordgo.Session, i *discordgo.
 	}); err != nil {
 		log.Printf("failed to edit message: %v", err)
 		return
+	}
+
+	events, err := s.GuildScheduledEvents(sm.Config.Discord.GuildID, false)
+	if err != nil {
+		log.Printf("cannot get guild events: %v", err)
+		return
+	}
+
+	for _, guildEvent := range events {
+		if guildEvent.Description == cEvent.Description {
+			err = s.GuildScheduledEventDelete(sm.Config.Discord.GuildID, guildEvent.ID)
+			if err != nil {
+				log.Printf("failed to delete guild event: %v", err)
+				return
+			}
+		}
 	}
 }

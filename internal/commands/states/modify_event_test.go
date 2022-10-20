@@ -44,27 +44,27 @@ func TestModifyEventState_OnState(t *testing.T) {
 		{
 			name:     "add title",
 			input:    "1",
-			expected: AddTitle.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "add description",
 			input:    "2",
-			expected: AddDescription.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "set date",
 			input:    "3",
-			expected: SetDate.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "set duration",
 			input:    "4",
-			expected: SetDuration.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "set location",
 			input:    "5",
-			expected: SetLocation.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "invalid",
@@ -83,6 +83,18 @@ func TestModifyEventState_OnState(t *testing.T) {
 						Name: ModifyEvent.String(),
 						Src:  []string{"idle"},
 						Dst:  ModifyEvent.String(),
+					},
+					{
+						Name: ContinueEdit.String(),
+						Src: []string{
+							ModifyEvent.String(),
+							AddTitle.String(),
+							AddDescription.String(),
+							SetDate.String(),
+							SetDuration.String(),
+							SetLocation.String(),
+						},
+						Dst: ContinueEdit.String(),
 					},
 					{
 						Name: AddTitle.String(),
@@ -122,10 +134,10 @@ func TestModifyEventState_OnState(t *testing.T) {
 			f.SetMetadata(discord.EventObject.String(), event)
 
 			go func() {
-				s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.input <- tc.input
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
 				}
-				s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 			}()
 
 			err = f.Event(context.TODO(), ModifyEvent.String())

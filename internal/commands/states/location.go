@@ -13,23 +13,15 @@ type SetLocationState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewSetLocationState(o discord.Options) *SetLocationState {
-	i := make(chan string)
-
 	return &SetLocationState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -40,7 +32,7 @@ func (l *SetLocationState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	err = AwaitInputOrTimeout(ctx, 60*time.Second, l.session, l.input, e.FSM, l.handlerFunc, discord.Location)
+	err = l.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Location, 60*time.Second)
 	if err != nil {
 		e.Err = err
 		return

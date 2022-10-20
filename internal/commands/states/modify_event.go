@@ -14,23 +14,15 @@ type ModifyEventState struct {
 	session           *discordgo.Session
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
-	input             chan string
-	handlerFunc       func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler      *InputHandler
 }
 
 func NewModifyEventState(o discord.Options) *ModifyEventState {
-	i := make(chan string)
-
 	return &ModifyEventState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -81,7 +73,7 @@ func (m *ModifyEventState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, m.session, m.input, e.FSM, m.handlerFunc, discord.MenuOption); err != nil {
+	if err = m.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -99,29 +91,62 @@ func (m *ModifyEventState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
+
+	if err = saveEventChanges(e, &event); err != nil {
+		e.Err = err
+		return
+	}
+
+	if err = e.FSM.Event(ctx, ContinueEdit.String()); err != nil {
+		e.Err = err
+		return
+	}
+}
+
+func saveEventChanges(e *fsm.Event, event *discord.Event) error {
+	title, found := e.FSM.Metadata(discord.Title.String())
+	if found {
+		event.Title = fmt.Sprintf("%s", title)
+	}
+	description, found := e.FSM.Metadata(discord.Description.String())
+	if found {
+		event.Description = fmt.Sprintf("%s", description)
+	}
+	date, found := e.FSM.Metadata(discord.StartTime.String())
+	if found {
+		val, ok := date.(time.Time)
+		if ok {
+			event.Start = val
+		}
+	}
+	duration, found := e.FSM.Metadata(discord.Duration.String())
+	if found {
+		val, ok := duration.(time.Time)
+		if ok {
+			event.End = val
+		}
+	}
+	location, found := e.FSM.Metadata(discord.Location.String())
+	if found {
+		event.Location = fmt.Sprintf("%s", location)
+	}
+	e.FSM.SetMetadata(discord.EventObject.String(), *event)
+	return nil
 }
 
 type ModifyEventRetryState struct {
 	session           *discordgo.Session
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
-	input             chan string
-	handlerFunc       func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler      *InputHandler
 }
 
 func NewModifyEventRetryState(o discord.Options) *ModifyEventRetryState {
-	i := make(chan string)
-
 	return &ModifyEventRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -130,7 +155,7 @@ func (m *ModifyEventRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
-	if err := AwaitInputOrTimeout(ctx, 60*time.Second, m.session, m.input, e.FSM, m.handlerFunc, discord.MenuOption); err != nil {
+	if err := m.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -144,6 +169,25 @@ func (m *ModifyEventRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		}
 	}
 	if err = e.FSM.Event(ctx, state); err != nil {
+		e.Err = err
+		return
+	}
+
+	obj, err := Get(e.FSM, discord.EventObject)
+	if err != nil {
+		e.Err = err
+		return
+	}
+	event, ok := obj.(discord.Event)
+	if !ok {
+		e.Err = fmt.Errorf("cannot get event")
+		return
+	}
+	if err = saveEventChanges(e, &event); err != nil {
+		e.Err = err
+		return
+	}
+	if err = e.FSM.Event(ctx, ContinueEdit.String()); err != nil {
 		e.Err = err
 		return
 	}

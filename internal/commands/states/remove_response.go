@@ -18,24 +18,15 @@ type RemoveResponseState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewRemoveResponseState(o discord.Options) *RemoveResponseState {
-	i := make(chan string)
-
 	return &RemoveResponseState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-
-		input: i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -104,7 +95,7 @@ func (r *RemoveResponseState) OnState(ctx context.Context, e *fsm.Event) {
 		nameMap[index+1] = name
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, r.session, r.input, e.FSM, r.handlerFunc, discord.MenuOption); err != nil {
+	if err = r.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -131,24 +122,16 @@ type RemoveResponseRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewRemoveResponseRetryState(o discord.Options) *RemoveResponseRetryState {
-	i := make(chan string)
-
 	return &RemoveResponseRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
 
-		input: i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler: NewInputHandler(&o),
 	}
 }
 
@@ -186,7 +169,7 @@ func (r *RemoveResponseRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		nameMap[index+1] = name
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, r.session, r.input, e.FSM, r.handlerFunc, discord.MenuOption); err != nil {
+	if err = r.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}

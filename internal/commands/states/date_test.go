@@ -40,10 +40,10 @@ func TestSetDateState_OnState(t *testing.T) {
 	)
 
 	go func() {
-		s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-			s.input <- "tomorrow"
+		s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+			s.inputHandler.inputChan <- "tomorrow"
 		}
-		s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+		s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 	}()
 
 	err = f.Event(context.TODO(), SetDate.String())

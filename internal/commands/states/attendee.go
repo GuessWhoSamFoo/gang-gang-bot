@@ -17,23 +17,15 @@ type SetAttendeeState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewSetAttendeeState(o discord.Options) *SetAttendeeState {
-	i := make(chan string)
-
 	return &SetAttendeeState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -44,7 +36,7 @@ func (s *SetAttendeeState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, s.session, s.input, e.FSM, s.handlerFunc, discord.Attendee); err != nil {
+	if err = s.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Attendee, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -63,23 +55,15 @@ type SetAttendeeRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewSetAttendeeRetryState(o discord.Options) *SetAttendeeRetryState {
-	i := make(chan string)
-
 	return &SetAttendeeRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -89,7 +73,7 @@ func (r *SetAttendeeRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, r.session, r.input, e.FSM, r.handlerFunc, discord.Attendee); err != nil {
+	if err = r.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Attendee, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -108,20 +92,23 @@ func validateAttendee(e *fsm.Event, key discord.MetadataKey) error {
 		return err
 	}
 
+	rg := role.NewDefaultRoleGroup()
+
 	var n int
 	if strings.EqualFold(fmt.Sprintf("%v", val), "none") {
 		n = 0
-	} else {
-		n, err = strconv.Atoi(fmt.Sprintf("%v", val))
-		if err != nil {
-			return err
-		}
+		rg.SetLimit(role.AcceptedField, n)
+		e.FSM.SetMetadata(discord.Attendee.String(), rg)
+		return nil
+	}
+	n, err = strconv.Atoi(fmt.Sprintf("%v", val))
+	if err != nil {
+		return err
 	}
 
 	if !InRange(n, 250, 1) {
 		return fmt.Errorf("attendee range out of bounds")
 	}
-	rg := role.NewDefaultRoleGroup()
 	rg.SetLimit(role.AcceptedField, n)
 	e.FSM.SetMetadata(discord.Attendee.String(), rg)
 	return nil

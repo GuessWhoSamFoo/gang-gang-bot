@@ -220,13 +220,25 @@ func FromFSMToEvent(f *fsm.FSM) (*Event, error) {
 		e.Location = fmt.Sprintf("%s", location)
 	}
 	if start, found := f.Metadata(StartTime.String()); found {
-		e.Start = start.(time.Time)
+		val, ok := start.(time.Time)
+		if !ok {
+			return nil, fmt.Errorf("cannot cast key: %s", StartTime.String())
+		}
+		e.Start = val
 	}
 	if end, found := f.Metadata(Duration.String()); found {
-		e.End = end.(time.Time)
+		val, ok := end.(time.Time)
+		if !ok {
+			return nil, fmt.Errorf("cannot cast key: %s", Duration.String())
+		}
+		e.End = val
 	}
 	if rg, found := f.Metadata(Attendee.String()); found {
-		e.RoleGroup = rg.(*role.RoleGroup) // Panics when attendee is none?
+		val, ok := rg.(*role.RoleGroup)
+		if !ok {
+			return nil, fmt.Errorf("cannot cast key: %s", Attendee.String())
+		}
+		e.RoleGroup = val
 	}
 	if owner, found := f.Metadata(Owner.String()); found {
 		e.Owner = fmt.Sprintf("%s", owner)

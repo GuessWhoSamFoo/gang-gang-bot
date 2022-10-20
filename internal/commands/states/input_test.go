@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
-	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 
 func TestAwaitInputOrTimeout(t *testing.T) {
 	ctx := context.TODO()
-	handlerFunc := func(s *discordgo.Session, m *discordgo.MessageCreate) {}
 	opts, err := mock.NewOptions()
 	assert.NoError(t, err)
 	ts := NewTimeoutState(*opts)
@@ -29,6 +27,6 @@ func TestAwaitInputOrTimeout(t *testing.T) {
 		fsm.Callbacks{
 			Timeout.String(): ts.OnState,
 		})
-	err = AwaitInputOrTimeout(ctx, 10*time.Millisecond, opts.Session, make(chan string), f, handlerFunc, "")
+	err = ts.inputHandler.AwaitInputOrTimeout(ctx, f, "", 10*time.Millisecond)
 	assert.Errorf(t, err, "event creation timed out: %v", nil)
 }

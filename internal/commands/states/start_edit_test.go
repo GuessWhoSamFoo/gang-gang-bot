@@ -144,6 +144,11 @@ func TestStartEditState_OnState(t *testing.T) {
 						Dst:  StartEditRetry.String(),
 					},
 					{
+						Name: ContinueEdit.String(),
+						Src:  []string{StartEdit.String(), ModifyEvent.String()},
+						Dst:  ContinueEdit.String(),
+					},
+					{
 						Name: Cancel.String(),
 						Src:  []string{StartEdit.String()},
 						Dst:  Cancel.String(),
@@ -155,10 +160,10 @@ func TestStartEditState_OnState(t *testing.T) {
 			)
 			f.SetMetadata(discord.EventObject.String(), event)
 			go func() {
-				s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.input <- tc.input
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
 				}
-				s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 			}()
 
 			err = f.Event(context.TODO(), StartEdit.String())

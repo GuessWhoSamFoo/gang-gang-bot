@@ -112,10 +112,10 @@ func TestAddResponseState_OnState(t *testing.T) {
 			)
 			f.SetMetadata(discord.EventObject.String(), event)
 			go func() {
-				s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.input <- tc.input
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
 				}
-				s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 			}()
 
 			err = f.Event(context.TODO(), AddResponse.String())
@@ -196,10 +196,10 @@ func TestUnknownUserState_OnState(t *testing.T) {
 			f.SetMetadata(discord.Username.String(), mockconstants.TestUser)
 
 			go func() {
-				s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.input <- tc.input
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
 				}
-				s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 			}()
 
 			err = f.Event(context.TODO(), UnknownUser.String())

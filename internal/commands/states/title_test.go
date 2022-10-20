@@ -40,10 +40,10 @@ func TestAddTitleState_OnState(t *testing.T) {
 	expected := "hello world"
 
 	go func() {
-		s.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-			s.input <- expected
+		s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+			s.inputHandler.inputChan <- expected
 		}
-		s.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+		s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 	}()
 
 	err = f.Event(context.TODO(), AddTitle.String())

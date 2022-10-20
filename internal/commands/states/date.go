@@ -17,23 +17,15 @@ type SetDateState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewSetDateState(o discord.Options) *SetDateState {
-	i := make(chan string)
-
 	return &SetDateState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -44,7 +36,7 @@ func (d *SetDateState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, d.session, d.input, e.FSM, d.handlerFunc, discord.StartTime); err != nil {
+	if err = d.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.StartTime, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -63,23 +55,15 @@ type SetDateRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewSetDateRetryState(o discord.Options) *SetDateRetryState {
-	i := make(chan string)
-
 	return &SetDateRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -90,7 +74,7 @@ func (r *SetDateRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, r.session, r.input, e.FSM, r.handlerFunc, discord.StartTime); err != nil {
+	if err = r.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.StartTime, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}

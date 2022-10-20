@@ -81,22 +81,27 @@ func EditEvents() fsm.Events {
 		},
 		{
 			Name: states.AddTitle.String(),
-			Src:  []string{states.ModifyEvent.String()},
+			Src:  []string{states.ModifyEvent.String(), states.ModifyEventRetry.String()},
 			Dst:  states.AddTitle.String(),
 		},
 		{
 			Name: states.AddDescription.String(),
-			Src:  []string{states.ModifyEvent.String()},
+			Src:  []string{states.ModifyEvent.String(), states.ModifyEventRetry.String()},
 			Dst:  states.AddDescription.String(),
 		},
 		{
 			Name: states.SetDate.String(),
-			Src:  []string{states.ModifyEvent.String()},
+			Src:  []string{states.ModifyEvent.String(), states.ModifyEventRetry.String()},
 			Dst:  states.SetDate.String(),
 		},
 		{
+			Name: states.SetDuration.String(),
+			Src:  []string{states.ModifyEvent.String(), states.ModifyEventRetry.String()},
+			Dst:  states.SetDuration.String(),
+		},
+		{
 			Name: states.SetLocation.String(),
-			Src:  []string{states.ModifyEvent.String()},
+			Src:  []string{states.ModifyEvent.String(), states.ModifyEventRetry.String()},
 			Dst:  states.SetLocation.String(),
 		},
 		{
@@ -150,6 +155,7 @@ func EditEvents() fsm.Events {
 				states.AddTitle.String(),
 				states.AddDescription.String(),
 				states.SetDate.String(),
+				states.SetDuration.String(),
 				states.SetLocation.String(),
 				states.ContinueEdit.String(),
 				states.ContinueEditRetry.String(),
@@ -171,6 +177,7 @@ func EditEvents() fsm.Events {
 				states.AddTitle.String(),
 				states.AddDescription.String(),
 				states.SetDate.String(),
+				states.SetDuration.String(),
 				states.SetLocation.String(),
 				states.ContinueEdit.String(),
 				states.ContinueEditRetry.String(),

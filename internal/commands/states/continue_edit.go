@@ -14,23 +14,15 @@ type ContinueEditState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewContinueEditState(o discord.Options) *ContinueEditState {
-	i := make(chan string)
-
 	return &ContinueEditState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -40,7 +32,7 @@ func (c *ContinueEditState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err := AwaitInputOrTimeout(ctx, 60*time.Second, c.session, c.input, e.FSM, c.handlerFunc, discord.MenuOption); err != nil {
+	if err := c.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -51,6 +43,10 @@ func (c *ContinueEditState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+		return
+	}
+	// No-op as all edits will be processed
+	if state == ProcessEdit.String() {
 		return
 	}
 	err = e.FSM.Event(ctx, state)
@@ -65,23 +61,15 @@ type ContinueEditRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewContinueEditRetryState(o discord.Options) *ContinueEditRetryState {
-	i := make(chan string)
-
 	return &ContinueEditRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -91,7 +79,7 @@ func (c *ContinueEditRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err := AwaitInputOrTimeout(ctx, 60*time.Second, c.session, c.input, e.FSM, c.handlerFunc, discord.MenuOption); err != nil {
+	if err := c.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -103,6 +91,10 @@ func (c *ContinueEditRetryState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+	}
+	// No-op as all edits will be processed
+	if state == ProcessEdit.String() {
+		return
 	}
 	err = e.FSM.Event(ctx, state)
 	if err != nil {

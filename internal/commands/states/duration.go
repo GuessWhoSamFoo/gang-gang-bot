@@ -15,23 +15,15 @@ type SetDurationState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewDurationState(o discord.Options) *SetDurationState {
-	i := make(chan string)
-
 	return &SetDurationState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -42,7 +34,7 @@ func (d *SetDurationState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, d.session, d.input, e.FSM, d.handlerFunc, discord.Duration); err != nil {
+	if err = d.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Duration, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -60,23 +52,15 @@ type SetDurationRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewDurationRetryState(o discord.Options) *SetDurationRetryState {
-	i := make(chan string)
-
 	return &SetDurationRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
-		input:             i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler:      NewInputHandler(&o),
 	}
 }
 
@@ -87,7 +71,7 @@ func (d *SetDurationRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, d.session, d.input, e.FSM, d.handlerFunc, discord.Duration); err != nil {
+	if err = d.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Duration, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}

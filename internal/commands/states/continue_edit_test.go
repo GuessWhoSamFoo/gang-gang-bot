@@ -29,7 +29,7 @@ func TestNewContinueEditState_OnState(t *testing.T) {
 		{
 			name:     "to process edit",
 			input:    "1",
-			expected: ProcessEdit.String(),
+			expected: ContinueEdit.String(),
 		},
 		{
 			name:     "to modify event",
@@ -77,10 +77,10 @@ func TestNewContinueEditState_OnState(t *testing.T) {
 			)
 
 			go func() {
-				c.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					c.input <- tc.input
+				c.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					c.inputHandler.inputChan <- tc.input
 				}
-				c.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				c.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 			}()
 
 			err = f.Event(context.TODO(), ContinueEdit.String())

@@ -42,10 +42,10 @@ func TestSetDurationState_OnState(t *testing.T) {
 	f.SetMetadata(discord.StartTime.String(), now)
 
 	go func() {
-		d.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-			d.input <- "1 hour"
+		d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+			d.inputHandler.inputChan <- "1 hour"
 		}
-		d.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+		d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
 	}()
 
 	err = f.Event(context.TODO(), SetDuration.String())

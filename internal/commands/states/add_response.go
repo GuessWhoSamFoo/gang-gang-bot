@@ -16,24 +16,16 @@ type AddResponseState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewAddResponseState(o discord.Options) *AddResponseState {
-	i := make(chan string)
-
 	return &AddResponseState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
 
-		input: i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler: NewInputHandler(&o),
 	}
 }
 
@@ -64,7 +56,7 @@ func (a *AddResponseState) OnState(ctx context.Context, e *fsm.Event) {
 		names = append(names, m.User.Username)
 	}
 
-	if err = AwaitInputOrTimeout(ctx, 60*time.Second, a.session, a.input, e.FSM, a.handlerFunc, discord.Username); err != nil {
+	if err = a.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.Username, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -116,24 +108,16 @@ type UnknownUserState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewUnknownUserState(o discord.Options) *UnknownUserState {
-	i := make(chan string)
-
 	return &UnknownUserState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
 
-		input: i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler: NewInputHandler(&o),
 	}
 }
 
@@ -155,7 +139,7 @@ func (u *UnknownUserState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err := AwaitInputOrTimeout(ctx, 60*time.Second, u.session, u.input, e.FSM, u.handlerFunc, discord.MenuOption); err != nil {
+	if err := u.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
@@ -181,24 +165,16 @@ type UnknownUserRetryState struct {
 	interactionCreate *discordgo.InteractionCreate
 	channel           *discordgo.Channel
 
-	input       chan string
-	handlerFunc func(*discordgo.Session, *discordgo.MessageCreate)
+	inputHandler *InputHandler
 }
 
 func NewUnknownUserRetryState(o discord.Options) *UnknownUserRetryState {
-	i := make(chan string)
-
 	return &UnknownUserRetryState{
 		session:           o.Session,
 		interactionCreate: o.InteractionCreate,
 		channel:           o.Channel,
 
-		input: i,
-		handlerFunc: func(s *discordgo.Session, m *discordgo.MessageCreate) {
-			if m.ChannelID == o.Channel.ID {
-				i <- m.Content
-			}
-		},
+		inputHandler: NewInputHandler(&o),
 	}
 }
 
@@ -208,7 +184,7 @@ func (u *UnknownUserRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err := AwaitInputOrTimeout(ctx, 60*time.Second, u.session, u.input, e.FSM, u.handlerFunc, discord.MenuOption); err != nil {
+	if err := u.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
 		return
 	}
