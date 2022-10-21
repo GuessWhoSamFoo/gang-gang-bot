@@ -127,7 +127,7 @@ func EditTypeSelect(e *fsm.Event) (string, error) {
 	}
 	option, ok := opts[val.(string)]
 	if !ok {
-		return "", fmt.Errorf("cannot find response")
+		return "", fmt.Errorf("cannot find %s response", e.FSM.Current())
 	}
 	return option.String(), nil
 }

@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/pkg/util"
 	"github.com/bwmarrin/discordgo"
@@ -9,7 +10,86 @@ import (
 	"time"
 )
 
-func Test_getEventFromMessage(t *testing.T) {
+func TestEvent_AddTitle(t *testing.T) {
+	e := Event{}
+	expected := "test"
+	e.AddTitle(expected)
+	assert.Equal(t, expected, e.Title)
+}
+
+func TestFromFSMToEvent(t *testing.T) {
+	cases := []struct {
+		name     string
+		key      MetadataKey
+		val      interface{}
+		expected *Event
+	}{
+		{
+			name:     "title",
+			key:      Title,
+			val:      "title",
+			expected: &Event{Title: "title"},
+		},
+		{
+			name:     "description",
+			key:      Description,
+			val:      "desc",
+			expected: &Event{Description: "desc"},
+		},
+		{
+			name:     "location",
+			key:      Location,
+			val:      "Seattle",
+			expected: &Event{Location: "Seattle"},
+		},
+		{
+			name:     "start time",
+			key:      StartTime,
+			val:      time.Time{},
+			expected: &Event{Start: time.Time{}},
+		},
+		{
+			name:     "duration",
+			key:      Duration,
+			val:      time.Time{},
+			expected: &Event{End: time.Time{}},
+		},
+		{
+			name: "attendee",
+			key:  Attendee,
+			val:  role.NewDefaultRoleGroup(),
+			expected: &Event{
+				RoleGroup: role.NewDefaultRoleGroup(),
+			},
+		},
+		{
+			name:     "owner",
+			key:      Owner,
+			val:      "owner",
+			expected: &Event{Owner: "owner"},
+		},
+		{
+			name:     "color",
+			key:      Color,
+			val:      Purple,
+			expected: &Event{Color: Purple},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := fsm.NewFSM("idle", fsm.Events{}, fsm.Callbacks{})
+			f.SetMetadata(tc.key.String(), tc.val)
+
+			got, err := FromFSMToEvent(f)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestGetEventFromMessage(t *testing.T) {
 	cases := []struct {
 		name     string
 		input    *discordgo.Message
@@ -80,7 +160,7 @@ func Test_getEventFromMessage(t *testing.T) {
 	}
 }
 
-func Test_convertEventToMessageEmbed(t *testing.T) {
+func TestConvertEventToMessageEmbed(t *testing.T) {
 	rg := role.NewDefaultRoleGroup()
 	err := rg.ToggleRole(role.AcceptedField, "user")
 	assert.NoError(t, err)

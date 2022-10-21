@@ -91,6 +91,7 @@ func (c *ContinueEditRetryState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+		return
 	}
 	// No-op as all edits will be processed
 	if state == ProcessEdit.String() {
@@ -115,7 +116,7 @@ func ConfirmSelect(e *fsm.Event) (string, error) {
 	}
 	option, ok := opts[val.(string)]
 	if !ok {
-		return "", fmt.Errorf("cannot find response")
+		return "", fmt.Errorf("cannot find %s response", e.FSM.Current())
 	}
 	return option.String(), nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/bwmarrin/discordgo"
 	"github.com/tj/go-naturaldate"
+	"strings"
 	"time"
 )
 
@@ -89,7 +90,12 @@ func validateDuration(e *fsm.Event, key discord.MetadataKey) error {
 	if err != nil {
 		return err
 	}
-	input := fmt.Sprintf("%v", val)
+	input := fmt.Sprintf("%s", val)
+	if strings.EqualFold(input, "none") {
+		e.FSM.SetMetadata(key.String(), time.Time{})
+		return nil
+	}
+
 	start, err := Get(e.FSM, discord.StartTime)
 	if err != nil {
 		return err
@@ -102,6 +108,7 @@ func validateDuration(e *fsm.Event, key discord.MetadataKey) error {
 	}
 
 	if input == "" || endTime.Before(startTime) || endTime.Equal(startTime) {
+		e.FSM.SetMetadata(key.String(), time.Time{})
 		return fmt.Errorf("invalid end time")
 	}
 	e.FSM.SetMetadata(key.String(), endTime)

@@ -74,6 +74,7 @@ func (sm *StateManager) CreateEventHandler(s *discordgo.Session, i *discordgo.In
 		return
 	}
 	if err := f.Event(ctx, states.SetAttendeeLimit.String()); err != nil {
+		log.Println(err)
 		return
 	}
 	if err := f.Event(ctx, states.SetDate.String()); err != nil {

@@ -22,40 +22,179 @@ func TestNewDurationState(t *testing.T) {
 func TestSetDurationState_OnState(t *testing.T) {
 	opts, err := mock.NewOptions()
 	assert.NoError(t, err)
-
-	d := NewDurationState(*opts)
-
-	f := fsm.NewFSM(
-		"idle",
-		fsm.Events{
-			{
-				Name: SetDuration.String(),
-				Src:  []string{"idle"},
-				Dst:  SetDuration.String(),
-			},
-		},
-		fsm.Callbacks{
-			SetDuration.String(): d.OnState,
-		},
-	)
 	now := time.Now()
-	f.SetMetadata(discord.StartTime.String(), now)
 
-	go func() {
-		d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-			d.inputHandler.inputChan <- "1 hour"
-		}
-		d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
-	}()
+	cases := []struct {
+		name          string
+		input         string
+		expectedState string
+		expectedTime  time.Time
+		isErr         bool
+	}{
+		{
+			name:          "valid",
+			input:         "1 hour",
+			expectedState: SetDuration.String(),
+			expectedTime:  now.Add(time.Minute * 60),
+		},
+		{
+			name:          "invalid",
+			input:         "invalid",
+			expectedState: SetDurationRetry.String(),
+			expectedTime:  time.Time{},
+		},
+		{
+			name:          "none",
+			input:         "none",
+			expectedState: SetDuration.String(),
+			expectedTime:  time.Time{},
+		},
+		{
+			name:          "cancel",
+			input:         "cancel",
+			expectedState: Cancel.String(),
+			isErr:         true,
+		},
+	}
 
-	err = f.Event(context.TODO(), SetDuration.String())
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := NewDurationState(*opts)
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: SetDuration.String(),
+						Src:  []string{"idle"},
+						Dst:  SetDuration.String(),
+					},
+					{
+						Name: SetDurationRetry.String(),
+						Src:  []string{SetDuration.String()},
+						Dst:  SetDurationRetry.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{SetDuration.String()},
+						Dst:  Cancel.String(),
+					},
+				},
+				fsm.Callbacks{
+					SetDuration.String(): d.OnState,
+				},
+			)
+			f.SetMetadata(discord.StartTime.String(), now)
+
+			go func() {
+				d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					d.inputHandler.inputChan <- tc.input
+				}
+				d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(context.TODO(), SetDuration.String())
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				got, err := Get(f, discord.Duration)
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedTime, got)
+			}
+
+			assert.Equal(t, tc.expectedState, f.Current())
+		})
+	}
+}
+
+func TestSetDurationRetryState_OnState(t *testing.T) {
+	opts, err := mock.NewOptions()
 	assert.NoError(t, err)
+	now := time.Now()
 
-	actual, err := Get(f, discord.Duration)
-	assert.NoError(t, err)
+	cases := []struct {
+		name          string
+		input         string
+		expectedState string
+		expectedTime  time.Time
+		isErr         bool
+	}{
+		{
+			name:          "valid",
+			input:         "1 hour",
+			expectedState: SetDurationRetry.String(),
+			expectedTime:  now.Add(time.Minute * 60),
+		},
+		{
+			name:          "invalid",
+			input:         "invalid",
+			expectedState: SelfTransition.String(),
+			expectedTime:  time.Time{},
+		},
+		{
+			name:          "none",
+			input:         "none",
+			expectedState: SetDurationRetry.String(),
+			expectedTime:  time.Time{},
+		},
+		{
+			name:          "cancel",
+			input:         "cancel",
+			expectedState: Cancel.String(),
+			isErr:         true,
+		},
+	}
 
-	expected := now.Add(time.Hour)
-	assert.Equal(t, expected, actual)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := NewDurationRetryState(*opts)
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: SetDurationRetry.String(),
+						Src:  []string{"idle"},
+						Dst:  SetDurationRetry.String(),
+					},
+					{
+						Name: SelfTransition.String(),
+						Src:  []string{SetDurationRetry.String()},
+						Dst:  SelfTransition.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{SetDurationRetry.String()},
+						Dst:  Cancel.String(),
+					},
+				},
+				fsm.Callbacks{
+					SetDurationRetry.String(): d.OnState,
+				},
+			)
+			f.SetMetadata(discord.StartTime.String(), now)
+
+			go func() {
+				d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					d.inputHandler.inputChan <- tc.input
+				}
+				d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(context.TODO(), SetDurationRetry.String())
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				got, err := Get(f, discord.Duration)
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedTime, got)
+			}
+
+			assert.Equal(t, tc.expectedState, f.Current())
+		})
+	}
 }
 
 func Test_validateDuration(t *testing.T) {
@@ -102,8 +241,12 @@ func Test_validateDuration(t *testing.T) {
 			expected: now.Add(time.Minute * 90),
 		},
 		{
+			input:    "none",
+			expected: time.Time{},
+		},
+		{
 			input:    "invalid",
-			expected: now,
+			expected: time.Time{},
 			isErr:    true,
 		},
 		// TODO: Find a more configurable parser
@@ -131,11 +274,7 @@ func Test_validateDuration(t *testing.T) {
 			actual, exists := f.Metadata(discord.Duration.String())
 			assert.True(t, exists)
 
-			if tc.isErr {
-				assert.Equal(t, tc.input, actual)
-			} else {
-				assert.Equal(t, tc.expected, actual)
-			}
+			assert.Equal(t, tc.expected, actual)
 		})
 	}
 }

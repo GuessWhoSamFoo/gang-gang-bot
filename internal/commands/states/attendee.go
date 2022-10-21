@@ -41,7 +41,7 @@ func (s *SetAttendeeState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	if err = validateAttendee(e, discord.Attendee); err != nil {
+	if err = validateAttendee(e.FSM, discord.Attendee); err != nil {
 		err = e.FSM.Event(ctx, SetAttendeeRetry.String())
 		if err != nil {
 			e.Err = err
@@ -77,7 +77,7 @@ func (r *SetAttendeeRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
-	if err = validateAttendee(e, discord.Attendee); err != nil {
+	if err = validateAttendee(e.FSM, discord.Attendee); err != nil {
 		eventErr := e.FSM.Event(ctx, SelfTransition.String())
 		if eventErr != nil {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
@@ -86,8 +86,8 @@ func (r *SetAttendeeRetryState) OnState(ctx context.Context, e *fsm.Event) {
 	}
 }
 
-func validateAttendee(e *fsm.Event, key discord.MetadataKey) error {
-	val, err := Get(e.FSM, key)
+func validateAttendee(f *fsm.FSM, key discord.MetadataKey) error {
+	val, err := Get(f, key)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func validateAttendee(e *fsm.Event, key discord.MetadataKey) error {
 	if strings.EqualFold(fmt.Sprintf("%v", val), "none") {
 		n = 0
 		rg.SetLimit(role.AcceptedField, n)
-		e.FSM.SetMetadata(discord.Attendee.String(), rg)
+		f.SetMetadata(discord.Attendee.String(), rg)
 		return nil
 	}
 	n, err = strconv.Atoi(fmt.Sprintf("%v", val))
@@ -110,7 +110,7 @@ func validateAttendee(e *fsm.Event, key discord.MetadataKey) error {
 		return fmt.Errorf("attendee range out of bounds")
 	}
 	rg.SetLimit(role.AcceptedField, n)
-	e.FSM.SetMetadata(discord.Attendee.String(), rg)
+	f.SetMetadata(discord.Attendee.String(), rg)
 	return nil
 }
 

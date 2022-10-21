@@ -110,3 +110,94 @@ func TestRemoveResponseState_OnState(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveResponseRetryState_OnState(t *testing.T) {
+	opts, err := mock.NewOptions()
+	assert.NoError(t, err)
+
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+		isErr    bool
+	}{
+		{
+			name:     "remove users",
+			input:    "1 2",
+			expected: RemoveResponseRetry.String(),
+		},
+		{
+			name:     "invalid",
+			input:    "invalid",
+			expected: SelfTransition.String(),
+		},
+		{
+			name:     "cancel",
+			input:    "cancel",
+			expected: Cancel.String(),
+			isErr:    true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rg := role.NewDefaultRoleGroup()
+			rg.Roles[0].Users = []string{mockconstants.TestUser, "leo"}
+
+			event := discord.Event{
+				Title:       "event",
+				Description: "description",
+				Location:    "Seattle",
+				Start:       time.Time{},
+				End:         time.Time{},
+				RoleGroup:   rg,
+				Owner:       mockconstants.TestUser,
+				Color:       discord.Purple,
+				ID:          "id",
+				DiscordLink: "example.com",
+			}
+
+			s := NewRemoveResponseRetryState(*opts)
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: RemoveResponseRetry.String(),
+						Src:  []string{"idle"},
+						Dst:  RemoveResponseRetry.String(),
+					},
+					{
+						Name: SelfTransition.String(),
+						Src:  []string{RemoveResponseRetry.String()},
+						Dst:  SelfTransition.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{RemoveResponseRetry.String()},
+						Dst:  Cancel.String(),
+					},
+				},
+				fsm.Callbacks{
+					RemoveResponseRetry.String(): s.OnState,
+				},
+			)
+			f.SetMetadata(discord.EventObject.String(), event)
+
+			go func() {
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
+				}
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(context.TODO(), RemoveResponseRetry.String())
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.expected, f.Current())
+		})
+	}
+}

@@ -192,7 +192,10 @@ func (u *UnknownUserRetryState) OnState(ctx context.Context, e *fsm.Event) {
 	state, err := userAddSelect(e)
 	if err != nil {
 		eventErr := e.FSM.Event(ctx, SelfTransition.String())
-		e.Err = fmt.Errorf("%v: %v", err, eventErr)
+		if eventErr != nil {
+			e.Err = fmt.Errorf("%v: %v", err, eventErr)
+			return
+		}
 		return
 	}
 	err = e.FSM.Event(ctx, state)

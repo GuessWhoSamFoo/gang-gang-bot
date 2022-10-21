@@ -167,6 +167,7 @@ func (m *ModifyEventRetryState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+		return
 	}
 	if err = e.FSM.Event(ctx, state); err != nil {
 		e.Err = err
@@ -208,7 +209,7 @@ func EditFieldSelect(e *fsm.Event) (string, error) {
 	}
 	option, ok := opts[val.(string)]
 	if !ok {
-		return "", fmt.Errorf("cannot find response")
+		return "", fmt.Errorf("cannot find %s response", e.FSM.Current())
 	}
 	return option.String(), nil
 }

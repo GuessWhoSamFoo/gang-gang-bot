@@ -107,6 +107,7 @@ func (r *RemoveResponseState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+		return
 	}
 
 	for _, n := range names {
@@ -145,7 +146,7 @@ func (r *RemoveResponseRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
-	event, ok := obj.(*discord.Event)
+	event, ok := obj.(discord.Event)
 	if !ok {
 		e.Err = fmt.Errorf("cannot get event")
 		return
@@ -181,6 +182,7 @@ func (r *RemoveResponseRetryState) OnState(ctx context.Context, e *fsm.Event) {
 			e.Err = fmt.Errorf("%v: %v", err, eventErr)
 			return
 		}
+		return
 	}
 
 	for _, n := range names {

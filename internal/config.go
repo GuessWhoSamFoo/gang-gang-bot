@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -33,7 +32,7 @@ func NewConfig() (*Config, error) {
 	var err error
 	credentials := os.Getenv("GOOGLE_CREDENTIALS")
 	if credentials == "" {
-		config.Google.Credentials, err = ioutil.ReadFile(credentialFileName)
+		config.Google.Credentials, err = os.ReadFile(credentialFileName)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find google credentials: %v", err)
 		}

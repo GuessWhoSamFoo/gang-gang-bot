@@ -29,3 +29,33 @@ func TestGetTimesFromLink(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintTime(t *testing.T) {
+	testTime := time.Date(2022, 01, 1, 0, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name     string
+		start    time.Time
+		end      time.Time
+		expected string
+	}{
+		{
+			name:     "end after start",
+			start:    testTime,
+			end:      testTime.Add(time.Minute),
+			expected: "<t:1640995200:F> - <t:1640995260:t>\n🕔<t:1640995200:R>",
+		},
+		{
+			name:     "end before start",
+			start:    testTime,
+			end:      time.Time{},
+			expected: "<t:1640995200:F>\n🕔<t:1640995200:R>",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := PrintTime(tc.start, tc.end)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}

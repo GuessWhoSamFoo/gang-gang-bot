@@ -3,6 +3,7 @@ package states
 import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
@@ -97,6 +98,141 @@ func TestSetAttendeeState_OnState(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expectedState, f.Current())
+		})
+	}
+}
+
+func TestSetAttendeeRetryState_OnState(t *testing.T) {
+	opts, err := mock.NewOptions()
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	cases := []struct {
+		name          string
+		input         string
+		expectedState string
+		isErr         bool
+	}{
+		{
+			name:          "within range",
+			input:         "50",
+			expectedState: SetAttendeeRetry.String(),
+		},
+		{
+			name:          "out of bounds",
+			input:         "10000",
+			expectedState: SelfTransition.String(),
+		},
+		{
+			name:          "none",
+			input:         "none",
+			expectedState: SetAttendeeRetry.String(),
+		},
+		{
+			name:          "invalid",
+			input:         "invalid",
+			expectedState: SelfTransition.String(),
+		},
+		{
+			name:          "cancel",
+			input:         "cancel",
+			expectedState: Cancel.String(),
+			isErr:         true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewSetAttendeeRetryState(*opts)
+
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: SetAttendeeRetry.String(),
+						Src:  []string{"idle"},
+						Dst:  SetAttendeeRetry.String(),
+					},
+					{
+						Name: SelfTransition.String(),
+						Src:  []string{SetAttendeeRetry.String()},
+						Dst:  SelfTransition.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{SetAttendeeRetry.String()},
+						Dst:  Cancel.String(),
+					},
+				},
+				fsm.Callbacks{
+					SetAttendeeRetry.String(): s.OnState,
+				},
+			)
+			go func() {
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
+				}
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(ctx, SetAttendeeRetry.String())
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.expectedState, f.Current())
+		})
+	}
+}
+
+func Test_validateAttendee(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		isErr bool
+	}{
+		{
+			name:  "within bounds",
+			input: "100",
+		},
+		{
+			name:  "none",
+			input: "None",
+		},
+		{
+			name:  "out of bounds higher",
+			input: "251",
+			isErr: true,
+		},
+		{
+			name:  "out of bounds negative",
+			input: "-1",
+			isErr: true,
+		},
+		{
+			name:  "out of bounds zero",
+			input: "0",
+			isErr: true,
+		},
+		{
+			name:  "not a number",
+			input: "invalid",
+			isErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := fsm.NewFSM("", fsm.Events{}, fsm.Callbacks{})
+			f.SetMetadata(discord.Attendee.String(), tc.input)
+			err := validateAttendee(f, discord.Attendee)
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

@@ -113,8 +113,10 @@ func (r *SignUpRetryState) OnState(ctx context.Context, e *fsm.Event) {
 	err = SelectRole(e, r.session, r.interactionCreate, &event, fmt.Sprintf("%v", user))
 	if err != nil {
 		eventErr := e.FSM.Event(ctx, SelfTransition.String())
-		e.Err = fmt.Errorf("%v: %v", err, eventErr)
-		return
+		if eventErr != nil {
+			e.Err = fmt.Errorf("%v: %v", err, eventErr)
+			return
+		}
 	}
 }
 
@@ -131,7 +133,7 @@ func SelectRole(e *fsm.Event, s *discordgo.Session, ic *discordgo.InteractionCre
 	}
 	option, ok := opts[val.(string)]
 	if !ok {
-		return fmt.Errorf("cannot find response")
+		return fmt.Errorf("cannot find %s response", e.FSM.Current())
 	}
 	return option(s, ic, name)
 }

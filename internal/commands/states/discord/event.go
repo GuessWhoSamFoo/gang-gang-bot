@@ -244,7 +244,10 @@ func FromFSMToEvent(f *fsm.FSM) (*Event, error) {
 		e.Owner = fmt.Sprintf("%s", owner)
 	}
 	if color, found := f.Metadata(Color.String()); found {
-		e.Color = color.(int)
+		val, ok := color.(int)
+		if ok {
+			e.Color = val
+		}
 	}
 	return e, nil
 }

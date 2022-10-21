@@ -208,5 +208,88 @@ func TestUnknownUserState_OnState(t *testing.T) {
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}
+}
 
+func TestUnknownUserRetryState_OnState(t *testing.T) {
+	opts, err := mock.NewOptions()
+	assert.NoError(t, err)
+
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "to add response",
+			input:    "1",
+			expected: AddResponse.String(),
+		},
+		{
+			name:     "to sign up",
+			input:    "2",
+			expected: SignUp.String(),
+		},
+		{
+			name:     "to cancel",
+			input:    "3",
+			expected: Cancel.String(),
+		},
+		{
+			name:     "invalid",
+			input:    "invalid",
+			expected: SelfTransition.String(),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewUnknownUserRetryState(*opts)
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: UnknownUserRetry.String(),
+						Src:  []string{"idle"},
+						Dst:  UnknownUserRetry.String(),
+					},
+					{
+						Name: AddResponse.String(),
+						Src:  []string{UnknownUserRetry.String()},
+						Dst:  AddResponse.String(),
+					},
+					{
+						Name: SignUp.String(),
+						Src:  []string{UnknownUserRetry.String()},
+						Dst:  SignUp.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{UnknownUserRetry.String()},
+						Dst:  Cancel.String(),
+					},
+					{
+						Name: SelfTransition.String(),
+						Src:  []string{UnknownUserRetry.String()},
+						Dst:  SelfTransition.String(),
+					},
+				},
+				fsm.Callbacks{
+					UnknownUserRetry.String(): s.OnState,
+				},
+			)
+			f.SetMetadata(discord.Username.String(), mockconstants.TestUser)
+
+			go func() {
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
+				}
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(context.TODO(), UnknownUserRetry.String())
+			assert.NoError(t, err)
+
+			assert.Equal(t, tc.expected, f.Current())
+		})
+	}
 }

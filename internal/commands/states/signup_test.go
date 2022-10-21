@@ -116,3 +116,100 @@ func TestSignUpState_OnState(t *testing.T) {
 		})
 	}
 }
+
+func TestSignUpRetryState_OnState(t *testing.T) {
+	opts, err := mock.NewOptions()
+	assert.NoError(t, err)
+
+	event := discord.Event{
+		Title:       "event",
+		Description: "description",
+		Location:    "Seattle",
+		Start:       time.Time{},
+		End:         time.Time{},
+		RoleGroup:   role.NewDefaultRoleGroup(),
+		Owner:       mockconstants.TestUser,
+		Color:       discord.Purple,
+		ID:          "id",
+		DiscordLink: "example.com",
+	}
+
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+		isErr    bool
+	}{
+		{
+			name:     "add accepted",
+			input:    "1",
+			expected: SignUpRetry.String(),
+		},
+		{
+			name:     "add declined",
+			input:    "2",
+			expected: SignUpRetry.String(),
+		},
+		{
+			name:     "add tentative",
+			input:    "3",
+			expected: SignUpRetry.String(),
+		},
+		{
+			name:     "invalid",
+			input:    "invalid",
+			expected: SelfTransition.String(),
+		},
+		{
+			name:     "cancel",
+			input:    "cancel",
+			expected: Cancel.String(),
+			isErr:    true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewSignUpRetryState(*opts)
+			f := fsm.NewFSM(
+				"idle",
+				fsm.Events{
+					{
+						Name: SignUpRetry.String(),
+						Src:  []string{"idle"},
+						Dst:  SignUpRetry.String(),
+					},
+					{
+						Name: SelfTransition.String(),
+						Src:  []string{SignUpRetry.String()},
+						Dst:  SelfTransition.String(),
+					},
+					{
+						Name: Cancel.String(),
+						Src:  []string{SignUpRetry.String()},
+						Dst:  Cancel.String(),
+					},
+				},
+				fsm.Callbacks{
+					SignUpRetry.String(): s.OnState,
+				},
+			)
+			f.SetMetadata(discord.Username.String(), "leo")
+			f.SetMetadata(discord.EventObject.String(), event)
+			go func() {
+				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+					s.inputHandler.inputChan <- tc.input
+				}
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+			}()
+
+			err = f.Event(context.TODO(), SignUpRetry.String())
+			if tc.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.expected, f.Current())
+		})
+	}
+}
