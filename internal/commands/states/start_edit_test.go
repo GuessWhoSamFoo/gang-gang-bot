@@ -10,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
@@ -159,20 +160,28 @@ func TestStartEditState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.EventObject.String(), event)
-			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
-				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
-			}()
-
-			err = f.Event(context.TODO(), StartEdit.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
 			}
 
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
+			}()
+
+			go func() {
+				err = f.Event(context.TODO(), StartEdit.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				wg.Done()
+			}()
+
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}

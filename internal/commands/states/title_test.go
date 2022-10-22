@@ -7,6 +7,7 @@ import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 )
 
@@ -38,17 +39,24 @@ func TestAddTitleState_OnState(t *testing.T) {
 	)
 
 	expected := "hello world"
+	s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+		s.inputHandler.inputChan <- expected
+	}
 
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
-		s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-			s.inputHandler.inputChan <- expected
-		}
 		s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+		wg.Done()
 	}()
 
-	err = f.Event(context.TODO(), AddTitle.String())
-	assert.NoError(t, err)
+	go func() {
+		err = f.Event(context.TODO(), AddTitle.String())
+		assert.NoError(t, err)
+		wg.Done()
+	}()
 
+	wg.Wait()
 	actual, err := Get(f, discord.Title)
 	assert.NoError(t, err)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
@@ -84,25 +85,29 @@ func TestSetDurationState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.StartTime.String(), now)
-
+			d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				d.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					d.inputHandler.inputChan <- tc.input
-				}
 				d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
 
-			err = f.Event(context.TODO(), SetDuration.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-
-				got, err := Get(f, discord.Duration)
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedTime, got)
-			}
-
+			go func() {
+				err = f.Event(context.TODO(), SetDuration.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+					got, err := Get(f, discord.Duration)
+					assert.NoError(t, err)
+					assert.Equal(t, tc.expectedTime, got)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expectedState, f.Current())
 		})
 	}
@@ -173,25 +178,29 @@ func TestSetDurationRetryState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.StartTime.String(), now)
-
-			go func() {
-				d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					d.inputHandler.inputChan <- tc.input
-				}
-				d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
-			}()
-
-			err = f.Event(context.TODO(), SetDurationRetry.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-
-				got, err := Get(f, discord.Duration)
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedTime, got)
+			d.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				d.inputHandler.inputChan <- tc.input
 			}
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				d.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
+			}()
+			go func() {
+				err = f.Event(context.TODO(), SetDurationRetry.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
 
+					got, err := Get(f, discord.Duration)
+					assert.NoError(t, err)
+					assert.Equal(t, tc.expectedTime, got)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expectedState, f.Current())
 		})
 	}

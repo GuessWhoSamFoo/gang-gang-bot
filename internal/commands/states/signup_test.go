@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
@@ -98,20 +99,26 @@ func TestSignUpState_OnState(t *testing.T) {
 			)
 			f.SetMetadata(discord.Username.String(), "leo")
 			f.SetMetadata(discord.EventObject.String(), event)
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
 				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
 
-			err = f.Event(context.TODO(), SignUp.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
+			go func() {
+				err = f.Event(context.TODO(), SignUp.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}
@@ -195,20 +202,26 @@ func TestSignUpRetryState_OnState(t *testing.T) {
 			)
 			f.SetMetadata(discord.Username.String(), "leo")
 			f.SetMetadata(discord.EventObject.String(), event)
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
 				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
 
-			err = f.Event(context.TODO(), SignUpRetry.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
+			go func() {
+				err = f.Event(context.TODO(), SignUpRetry.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}

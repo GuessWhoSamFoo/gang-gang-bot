@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
@@ -111,16 +112,22 @@ func TestAddResponseState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.EventObject.String(), event)
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
 				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
 
-			err = f.Event(context.TODO(), AddResponse.String())
-			assert.NoError(t, err)
-
+			go func() {
+				err = f.Event(context.TODO(), AddResponse.String())
+				assert.NoError(t, err)
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}
@@ -194,17 +201,22 @@ func TestUnknownUserState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.Username.String(), mockconstants.TestUser)
-
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
 				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
 
-			err = f.Event(context.TODO(), UnknownUser.String())
-			assert.NoError(t, err)
-
+			go func() {
+				err = f.Event(context.TODO(), UnknownUser.String())
+				assert.NoError(t, err)
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}
@@ -278,17 +290,21 @@ func TestUnknownUserRetryState_OnState(t *testing.T) {
 				},
 			)
 			f.SetMetadata(discord.Username.String(), mockconstants.TestUser)
-
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
 			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
 				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
 			}()
-
-			err = f.Event(context.TODO(), UnknownUserRetry.String())
-			assert.NoError(t, err)
-
+			go func() {
+				err = f.Event(context.TODO(), UnknownUserRetry.String())
+				assert.NoError(t, err)
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expected, f.Current())
 		})
 	}

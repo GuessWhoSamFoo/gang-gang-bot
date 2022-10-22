@@ -6,6 +6,7 @@ import (
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 )
 
@@ -62,20 +63,25 @@ func TestSetLocationState_OnState(t *testing.T) {
 					SetLocation.String(): s.OnState,
 				},
 			)
-			go func() {
-				s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
-					s.inputHandler.inputChan <- tc.input
-				}
-				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
-			}()
-
-			err = f.Event(context.TODO(), SetLocation.String())
-			if tc.isErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+			s.inputHandler.handlerFunc = func(session *discordgo.Session, create *discordgo.MessageCreate) {
+				s.inputHandler.inputChan <- tc.input
 			}
-
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				s.inputHandler.handlerFunc(opts.Session, &discordgo.MessageCreate{})
+				wg.Done()
+			}()
+			go func() {
+				err = f.Event(context.TODO(), SetLocation.String())
+				if tc.isErr {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 			assert.Equal(t, tc.expectedState, f.Current())
 		})
 	}
