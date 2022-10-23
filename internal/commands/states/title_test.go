@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -12,7 +11,7 @@ import (
 )
 
 func TestNewAddTitleState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewAddTitleState(*opts)
@@ -20,7 +19,7 @@ func TestNewAddTitleState(t *testing.T) {
 }
 
 func TestAddTitleState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewAddTitleState(*opts)
 

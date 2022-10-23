@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockchannel"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
@@ -100,35 +99,6 @@ func NewSession() (*discordgo.Session, error) {
 			Transport: mockrest.NewTransport(state),
 		}),
 	)
-}
-
-// NewOptions returns a mocked Discord user session
-func NewOptions() (*discord.Options, error) {
-	session, err := NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	channel := mockchannel.New(
-		mockchannel.WithID(mockconstants.TestChannel),
-	)
-
-	ic := &discordgo.InteractionCreate{
-		Interaction: &discordgo.Interaction{
-			GuildID: mockconstants.TestGuild,
-			Member: &discordgo.Member{
-				User: &discordgo.User{
-					Username: mockconstants.TestUser,
-				},
-			},
-		},
-	}
-
-	return &discord.Options{
-		Session:           session,
-		InteractionCreate: ic,
-		Channel:           channel,
-	}, nil
 }
 
 // NewInteractionResponse returns a stubbed Discord response

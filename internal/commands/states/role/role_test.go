@@ -620,3 +620,19 @@ func TestRoleGroup_HasUser(t *testing.T) {
 		})
 	}
 }
+
+func TestRoleGroup_PeekWaitlist(t *testing.T) {
+	rg := NewDefaultRoleGroup()
+	rg.SetLimit(AcceptedField, 1)
+	err := rg.ToggleRole(AcceptedField, "a")
+	assert.NoError(t, err)
+
+	err = rg.ToggleRole(AcceptedField, "b")
+	assert.Equal(t, "b", rg.PeekWaitlist(AcceptedField))
+}
+
+func TestRoleGroup_SetLimit(t *testing.T) {
+	rg := NewDefaultRoleGroup()
+	rg.SetLimit(AcceptedField, 2)
+	assert.Equal(t, 2, rg.Roles[0].Limit)
+}

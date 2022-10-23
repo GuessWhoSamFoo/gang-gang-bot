@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -12,14 +11,14 @@ import (
 )
 
 func TestNewSetAttendeeState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewSetAttendeeState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestSetAttendeeState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -109,7 +108,7 @@ func TestSetAttendeeState_OnState(t *testing.T) {
 }
 
 func TestSetAttendeeRetryState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	ctx := context.Background()
 

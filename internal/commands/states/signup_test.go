@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
@@ -15,14 +14,14 @@ import (
 )
 
 func TestNewSignUpState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewSignUpState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestSignUpState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	event := discord.Event{
@@ -125,7 +124,7 @@ func TestSignUpState_OnState(t *testing.T) {
 }
 
 func TestSignUpRetryState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	event := discord.Event{

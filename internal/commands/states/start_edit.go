@@ -92,6 +92,11 @@ func (r *StartEditRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		e.Err = err
 		return
 	}
+	event, err := discord.GetEventFromMessage(r.interactionCreate.Interaction.Message)
+	if err != nil {
+		e.Err = err
+		return
+	}
 
 	if err := r.inputHandler.AwaitInputOrTimeout(ctx, e.FSM, discord.MenuOption, 60*time.Second); err != nil {
 		e.Err = err
@@ -107,7 +112,7 @@ func (r *StartEditRetryState) OnState(ctx context.Context, e *fsm.Event) {
 		return
 	}
 
-	err = e.FSM.Event(ctx, state)
+	e.FSM.SetMetadata(discord.EventObject.String(), *event)
 	if err = e.FSM.Event(ctx, state); err != nil {
 		e.Err = err
 		return

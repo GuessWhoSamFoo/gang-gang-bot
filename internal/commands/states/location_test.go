@@ -3,7 +3,7 @@ package states
 import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewSetLocationState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewSetLocationState(*opts)
@@ -19,7 +19,7 @@ func TestNewSetLocationState(t *testing.T) {
 }
 
 func TestSetLocationState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {

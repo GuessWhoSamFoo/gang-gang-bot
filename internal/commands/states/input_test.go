@@ -3,7 +3,7 @@ package states
 import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
+	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -11,7 +11,7 @@ import (
 
 func TestAwaitInputOrTimeout(t *testing.T) {
 	ctx := context.TODO()
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	ts := NewTimeoutState(*opts)
 

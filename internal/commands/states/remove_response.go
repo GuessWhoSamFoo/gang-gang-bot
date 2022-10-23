@@ -116,6 +116,19 @@ func (r *RemoveResponseState) OnState(ctx context.Context, e *fsm.Event) {
 			return
 		}
 	}
+
+	offWaitlistUsers, err := event.PromoteFromWaitlists()
+	if err != nil {
+		e.Err = err
+		return
+	}
+
+	for _, u := range offWaitlistUsers {
+		if err = event.NotifyUserOffWaitlist(r.session, r.interactionCreate.Interaction, u); err != nil {
+			e.Err = err
+			return
+		}
+	}
 }
 
 type RemoveResponseRetryState struct {
@@ -187,6 +200,19 @@ func (r *RemoveResponseRetryState) OnState(ctx context.Context, e *fsm.Event) {
 
 	for _, n := range names {
 		if err = event.RemoveFromAllLists(r.session, r.interactionCreate, n); err != nil {
+			e.Err = err
+			return
+		}
+	}
+
+	offWaitlistUsers, err := event.PromoteFromWaitlists()
+	if err != nil {
+		e.Err = err
+		return
+	}
+
+	for _, u := range offWaitlistUsers {
+		if err = event.NotifyUserOffWaitlist(r.session, r.interactionCreate.Interaction, u); err != nil {
 			e.Err = err
 			return
 		}

@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewStartCreateState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewStartCreateState(*opts)
@@ -19,7 +19,7 @@ func TestNewStartCreateState(t *testing.T) {
 }
 
 func TestNewStartCreateState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewStartCreateState(*opts)

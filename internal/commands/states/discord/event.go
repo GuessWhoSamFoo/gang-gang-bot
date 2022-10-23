@@ -164,6 +164,28 @@ func (e *Event) RemoveFromAllLists(s *discordgo.Session, i *discordgo.Interactio
 	return nil
 }
 
+func (e *Event) PromoteFromWaitlists() ([]string, error) {
+	if e.RoleGroup == nil {
+		return []string{}, fmt.Errorf("missing role group")
+	}
+	promoted := make([]string, 0)
+	for _, r := range e.RoleGroup.Roles {
+		wl, hasWaitlist := e.RoleGroup.Waitlist[r.FieldName]
+		if hasWaitlist && r.Limit > len(r.Users) {
+			count := r.Limit - len(r.Users)
+			for c := 0; c < count && len(wl.Users) > 0; c++ {
+				var user string
+				user, wl.Users = wl.Users[0], wl.Users[1:]
+				wl.Count--
+				r.Users = append(r.Users, user)
+				r.Count++
+				promoted = append(promoted, user)
+			}
+		}
+	}
+	return promoted, nil
+}
+
 func (e *Event) NotifyUserOffWaitlist(s *discordgo.Session, i *discordgo.Interaction, name string) error {
 	if name == "" {
 		return nil

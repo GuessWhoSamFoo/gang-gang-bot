@@ -4,13 +4,12 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestNewCancelState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewCancelState(*opts)
@@ -18,7 +17,7 @@ func TestNewCancelState(t *testing.T) {
 }
 
 func TestCancelState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {

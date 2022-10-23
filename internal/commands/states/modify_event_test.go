@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
@@ -15,14 +14,14 @@ import (
 )
 
 func TestNewModifyEventState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewModifyEventState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestModifyEventState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	event := discord.Event{
@@ -155,7 +154,7 @@ func TestModifyEventState_OnState(t *testing.T) {
 }
 
 func TestNewModifyEventRetryState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	event := discord.Event{

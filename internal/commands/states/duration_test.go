@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"sync"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestNewDurationState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	s := NewDurationState(*opts)
@@ -21,7 +20,7 @@ func TestNewDurationState(t *testing.T) {
 }
 
 func TestSetDurationState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	now := time.Now()
 
@@ -114,7 +113,7 @@ func TestSetDurationState_OnState(t *testing.T) {
 }
 
 func TestSetDurationRetryState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	now := time.Now()
 
@@ -208,7 +207,7 @@ func TestSetDurationRetryState_OnState(t *testing.T) {
 
 func Test_validateDuration(t *testing.T) {
 	now := time.Now()
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	d := NewDurationState(*opts)

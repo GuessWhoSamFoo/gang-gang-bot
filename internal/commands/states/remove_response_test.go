@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
@@ -15,14 +14,14 @@ import (
 )
 
 func TestNewRemoveResponseState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewRemoveResponseState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestRemoveResponseState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -118,7 +117,7 @@ func TestRemoveResponseState_OnState(t *testing.T) {
 }
 
 func TestRemoveResponseRetryState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/GuessWhoSamFoo/fsm"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/discord"
-	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/mock"
 	"github.com/GuessWhoSamFoo/gang-gang-bot/internal/commands/states/role"
 	"github.com/bwmarrin/discordgo"
 	"github.com/ewohltman/discordgo-mock/mockconstants"
@@ -15,21 +14,21 @@ import (
 )
 
 func TestNewAddResponseState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewAddResponseState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestNewUnknownUserState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 	s := NewUnknownUserState(*opts)
 	assert.NotNil(t, s)
 }
 
 func TestAddResponseState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	rg := role.NewDefaultRoleGroup()
@@ -134,7 +133,7 @@ func TestAddResponseState_OnState(t *testing.T) {
 }
 
 func TestUnknownUserState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -223,7 +222,7 @@ func TestUnknownUserState_OnState(t *testing.T) {
 }
 
 func TestUnknownUserRetryState_OnState(t *testing.T) {
-	opts, err := mock.NewOptions()
+	opts, err := discord.NewMockOptions()
 	assert.NoError(t, err)
 
 	cases := []struct {
