@@ -24,3 +24,11 @@ heroku local
 It will use secrets from `.env` and allow for multiple development environments.
 
 The `Procfile` can be used have finer control over what happens during runtime on a Heroku dyno.
+
+## Deployment
+
+Scale the dyno as needed:
+
+```
+heroku ps:scale worker=1 -a salsa-discord-bot
+```

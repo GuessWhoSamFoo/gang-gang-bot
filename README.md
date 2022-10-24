@@ -2,10 +2,31 @@
 
 This Discord bot is intended for use by the [SALSA Discord Group](https://discord.gg/jmKXruqvz4).
 
+The bot supports:
+
+ - Accepted, Declined, and Tentative roles for event management
+ - Maximum event size and waitlists
+ - Manually adding/removing attendees
+ - Syncs event posts to Discord and Google Calendar
+
+To view events in a calendar format, send a request to [https://groups.google.com/g/salsa-automation](https://groups.google.com/g/salsa-automation)
+
+Once approved, subscribe to the [calendar](https://calendar.google.com/calendar/u/0?cid=NDc2ZTViMDAxYmQ5YTY3ODI1OTgwYWY5OTUxYmYxMTI1ODhmNWQ4NDNjZDE5OGFiYmFlOTUyZWJmZWM3MTgyMUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t)
+
+## Usage
+
+### Commands
+
+`/event` - Starts a DM sequence to create a new event
+
+`/my_events` - List all events created by user and any marked as attending
+
+`/upcoming_events` - Lists all upcoming events in the server
+
 ## Roadmap
 
  * Recurring events
- * Integration with Google/Outlook/etc Calendar
+ * Event Images
  * Accessibility
  * Viewing, sorting, filtering events
  * Localization
@@ -21,7 +42,7 @@ then create a new application. Under `Settings` > `Bot`, there is an option to g
 
 It is also recommended to create a new server for testing.
 
-1. Install Go 1.18+
+1. Install Go 1.19+
 
 2. Create a `config.yaml` file with the Guild ID and Bot Token in the repo root. This file contains secrets and
 should not be committed to version control or uploaded online without encryption.
@@ -49,6 +70,11 @@ https://discord.com/api/oauth2/authorize?client_id=920479421478076468&permission
 4. Start the bot by running `go run cmd/gang-gang-bot/main.go` from the root directory of the git repo.
 
 5. A new Slash command `/event` should be available which still start a DM sequence for creating a new event.
+
+### Graphviz
+
+Bot states can be visualized using graphviz. If the [executable](https://graphviz.org/download/) is installed, `make viz`
+can be used to generate graphs found in `/internal/tools` showing transitions between states based on user input.
 
 ## Resources
 
